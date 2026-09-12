@@ -1,0 +1,36 @@
+1) SHOW REGIONS FROM DATABASE ;
+Resultado confirmado por config-check.txt: tres regiones configuradas:
+	cr-sj (región primaria), cr-limon y us-east.
+
+2) SHOW CREATE TABLE pedido;
+Resultado confirmado:
+	PRIMARY KEY (region ASC, pedido_id ASC)
+	LOCALITY REGIONAL BY ROW AS region
+La columna region es de tipo crdb_internal_region y determina la región hogar.
+
+3) SELECT region, count(*) FROM pedido GROUP BY region ORDER BY region;
+Resultado confirmado por seed.sql y verify_cluster.py:
+	cr-sj    | 1
+	cr-limon | 1
+	us-east  | 1
+
+4) SHOW ZONE CONFIGURATION FOR TABLE pedido;
+La consulta fue solicitada por el README, pero su salida literal no fue conservada
+en la evidencia original. No se inventan parámetros de zona. La localidad RBR sí
+está confirmada por SHOW CREATE TABLE y config-check.txt.
+
+5) SHOW RANGES FROM TABLE pedido WITH DETAILS;
+La consulta fue solicitada por el README, pero su salida literal no fue conservada
+en la evidencia original. La tabla está configurada como REGIONAL BY ROW y puede
+tener rangos subreplicados en este clúster de un nodo por región.
+
+6) SHOW RANGES FROM TABLE;
+Resultado confirmado por chaos-a-before.txt:
+	range_id        | 76
+	lease_holder    | 3
+	voting_replicas | {1,3,2}
+
+Localidades confirmadas por node-status-initial.txt:
+	node 1 | region=cr-sj,zone=a
+	node 2 | region=us-east,zone=a
+	node 3 | region=cr-limon,zone=a
