@@ -15,11 +15,11 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 
 ## 2. E2: Implementación (20 %)
 - [ ] Crear la carpeta `p1/` (sql, gen, bench, chaos, baseline)
-- [ ] Usar una base de datos propia (`p1_banca`)
-- [ ] `00_database.sql`: región primaria + regiones (idempotente)
-- [ ] `01_schema.sql`: tablas con `LOCALITY`
+- [x] Usar una base de datos propia (`p1_banca`)
+- [x] `00_database.sql`: región primaria + regiones (idempotente)
+- [x] `01_schema.sql`: tablas con `LOCALITY`
 - [ ] `02_e4_table.sql`: tabla del dominio con RF=3 y 3 votantes verificados
-- [ ] `gen/seed.py`: generador con semilla fija y volumen justificado
+- [x] `gen/seed.py`: generador con semilla fija y volumen justificado
 - [ ] Script único de configuración (levantar → licencia → SQL → seed → verificar)
 - [ ] Verificador propio del P1
 - [ ] Evidencia generada por script en `evidence/p1/` (`SHOW REGIONS`, `SHOW CREATE`, `SHOW RANGES`, conteos)
