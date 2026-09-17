@@ -6,12 +6,12 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Requisitos y regiones: operaciones típicas y frecuencia estimada
 - [x] Esquema lógico `cliente`, `cuenta`, `movimiento` (+ tabla pequeña candidata a `GLOBAL`) con PK/FK
 - [x] Predicados de fragmentación horizontal (`region = 'cr-sj'`…) y derivada para `cuenta` / `movimiento`
-- [ ] Decidir si hay fragmentación vertical de la PII
+- [x] Decidir si hay fragmentación vertical de la PII
 - [ ] Tabla de verificación: completitud, reconstrucción, disyunción (con consulta SQL de prueba)
 - [ ] Tabla de réplica: qué tabla, factor y criterio de costo (`GLOBAL` vs `REGIONAL BY ROW`)
 - [ ] Distinguir réplica Raft de réplica de Özsu
 - [ ] Asignación fragmento → nodo/región + diagrama
-- [ ] Evaluar `PLACEMENT RESTRICTED` y declarar el límite de residencia
+- [x] Evaluar `PLACEMENT RESTRICTED` y declarar el límite de residencia
 
 ## 2. E2: Implementación (20 %)
 - [ ] Crear la carpeta `p1/` (sql, gen, bench, chaos, baseline)
@@ -24,7 +24,7 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Verificador propio del P1
 - [x] Evidencia generada por script en `evidence/p1/` (`SHOW REGIONS`, `SHOW CREATE`, `SHOW RANGES`, conteos)
 - [x] `p1/README.md` para reproducir en una máquina limpia
-- [ ] Probar en la máquina de otro integrante
+- [x] Probar en la máquina de otro integrante
 
 ## 3. E3: Mediciones (20 %)
 - [x] Definir "local" vs. "cruza región" en una frase
@@ -33,7 +33,7 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
   - [x] Escritura local / escritura que cruza región
 - [x] Warm-up descartado, n ≥ 30 (ideal 100), p50 y p99, CSV crudo
 - [x] Registrar el entorno (máquina, recursos, versión, sin latencia inyectada)
-- [ ] Tabla de resultados + interpretación (por qué el p99 remoto es mayor o no)
+- [x] Tabla de resultados + interpretación (por qué el p99 remoto es mayor o no)
 
 ## 4. E4: Falla de nodo (15 %)
 - [ ] Script de falla: escritura sana → mover lease → `docker stop` con época → sonda → `docker start`
