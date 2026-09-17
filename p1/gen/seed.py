@@ -7,6 +7,9 @@ Volumen y proporciones salen del E1 (p1/docs/E1-diseno.md §1):
 
 Con la misma --semilla y --clientes, cualquier máquina genera exactamente las
 mismas filas; la "huella" impresa al final permite comprobarlo.
+
+El SQL es común a CockroachDB (servicio app-crdb, E2) y PostgreSQL (servicio app, E5):
+el motor lo decide la conexión del servicio, así ambos cargan las mismas filas.
 """
 
 from __future__ import annotations
@@ -205,9 +208,12 @@ def main() -> int:
         if args.reset:
             conn.execute("TRUNCATE movimiento, cuenta, cliente")
 
+        # ON CONFLICT en vez de UPSERT: UPSERT solo existe en CockroachDB.
         conn.execute(
-            "UPSERT INTO moneda (codigo, nombre, tasa_crc, actualizado_en) VALUES "
-            + ",".join(["(%s, %s, %s, %s)"] * len(MONEDAS)),
+            "INSERT INTO moneda (codigo, nombre, tasa_crc, actualizado_en) VALUES "
+            + ",".join(["(%s, %s, %s, %s)"] * len(MONEDAS))
+            + " ON CONFLICT (codigo) DO UPDATE SET nombre = excluded.nombre, tasa_crc = excluded.tasa_crc,"
+              " actualizado_en = excluded.actualizado_en",
             [v for m in MONEDAS for v in (*m, INICIO)],
         )
 
@@ -224,7 +230,7 @@ def main() -> int:
         print("\nFilas por región:")
         for tabla in ("cliente", "cuenta", "movimiento"):
             filas = conn.execute(
-                f"SELECT region::STRING, count(*) FROM {tabla} GROUP BY region ORDER BY region"
+                f"SELECT region::TEXT, count(*) FROM {tabla} GROUP BY region ORDER BY region"
             ).fetchall()
             print(f"  {tabla:<10} " + "  ".join(f"{r}={n}" for r, n in filas))
     return 0

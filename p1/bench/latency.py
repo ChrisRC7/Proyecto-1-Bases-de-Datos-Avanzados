@@ -12,6 +12,11 @@ Casos (operaciones del E1 §1):
 
 Las dos escrituras hacen el mismo trabajo (2 UPDATE de cuenta + 2 INSERT de movimiento
 en una transacción); solo cambia la región hogar de la contraparte.
+
+E5 corre este mismo script contra PostgreSQL de un nodo (servicio app). El motor lo fija
+TI4601_ENGINE, que declara cada servicio de docker-compose.yml. En PostgreSQL todas las
+filas están en el mismo servidor: los cuatro casos se conservan para comparar operación
+por operación, y "local"/"cruza" describen solo la región hogar de las filas.
 """
 
 from __future__ import annotations
@@ -36,12 +41,27 @@ CASOS = ("lectura-local", "lectura-remota", "escritura-local", "escritura-cruza"
 MONTO = Decimal("1.00")
 MAX_REINTENTOS = 10
 
+MOTOR = os.environ.get("TI4601_ENGINE", "cockroach")
+GATEWAY = {"cockroach": "crdb-1", "postgres": "postgres"}
+PREFIJO = {"cockroach": "e3-latency", "postgres": "e5-postgres-latency"}
+PERFIL = {
+    "cockroach": "clúster completo del Lab 1 (3 nodos, --cache=256MiB, --max-sql-memory=256MiB), una sola máquina",
+    "postgres": "PostgreSQL de un nodo (imagen postgres:16, configuración por defecto), misma máquina",
+}
+# Región donde viviría el servidor único: la primaria del E1 (50 % de los clientes).
+REGION_NODO_UNICO = "cr-sj"
+
 
 def conectar(host: str) -> psycopg.Connection:
     # Host fijo, no la lista PGHOST: si el gateway cambiara entre muestras,
     # "local" y "remoto" dejarían de significar lo mismo.
-    return psycopg.connect(host=host, port=26257, dbname="p1_banca", user="root",
-                           sslmode="disable", connect_timeout=5, autocommit=True)
+    # Puerto, usuario y sslmode salen del entorno del servicio (app-crdb o app).
+    conn = psycopg.connect(host=host, dbname="p1_banca", connect_timeout=5, autocommit=True)
+    if MOTOR == "postgres":
+        # CockroachDB solo ofrece SERIALIZABLE; con el mismo nivel en PostgreSQL la
+        # diferencia medida no viene del aislamiento.
+        conn.isolation_level = psycopg.IsolationLevel.SERIALIZABLE
+    return conn
 
 
 def cuentas_de(conn, region: str, n: int) -> list:
@@ -53,7 +73,7 @@ def cuentas_de(conn, region: str, n: int) -> list:
         (region, n),
     ).fetchall()
     if len(filas) < n:
-        sys.exit(f"No hay {n} cuentas CRC con saldo en {region}; ejecute p1/setup.sh")
+        sys.exit(f"No hay {n} cuentas CRC con saldo en {region}; ejecute p1/setup.sh (o p1/e5.sh en PostgreSQL)")
     return [(region, cuenta_id) for (cuenta_id,) in filas]
 
 
@@ -122,17 +142,21 @@ def percentil(valores: list[float], p: float) -> float:
 
 def entorno(conn, args, region_gw: str, region_remota: str) -> list[str]:
     version = conn.execute("SELECT version()").fetchone()[0].split(" (")[0]
+    # Se consulta dentro de una transacción, que es donde aplica el nivel pedido.
+    with conn.transaction():
+        aislamiento = conn.execute("SHOW transaction_isolation").fetchone()[0]
     memoria = next((l.split()[1] for l in Path("/proc/meminfo").read_text().splitlines()
                     if l.startswith("MemTotal")), "?")
     return [
         f"fecha_utc: {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
         f"motor: {version}",
         f"gateway: {args.gateway} (gateway_region={region_gw}); región remota: {region_remota}",
+        f"aislamiento: {aislamiento}",
         f"corridas por caso: {args.corridas}; warm-up descartado por caso: {args.warmup}",
         f"orden de casos: aleatorio por ronda (semilla {args.semilla})",
         f"cpus: {os.cpu_count()}; memoria: {int(memoria) // 1024} MiB; python {platform.python_version()}; "
         f"psycopg {psycopg.__version__}",
-        "perfil: clúster completo del Lab 1 (3 nodos, --cache=256MiB, --max-sql-memory=256MiB), una sola máquina",
+        f"perfil: {PERFIL[MOTOR]}",
         "latencia inyectada: ninguna (regiones lógicas)",
         "reloj: time.perf_counter_ns() alrededor de la operación completa (incluye COMMIT y reintentos)",
         "conexión: una conexión persistente al gateway; no incluye tiempo de conexión",
@@ -142,25 +166,32 @@ def entorno(conn, args, region_gw: str, region_remota: str) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--gateway", default="crdb-1", help="nodo SQL fijo (por defecto crdb-1, cr-sj)")
+    parser.add_argument("--gateway", default=GATEWAY[MOTOR],
+                        help="nodo SQL fijo (por defecto crdb-1, cr-sj; en PostgreSQL, postgres)")
     parser.add_argument("--remota", default=None, help="región remota (por defecto cr-limon, o cr-sj)")
     parser.add_argument("--corridas", type=int, default=100)
     parser.add_argument("--warmup", type=int, default=10)
     parser.add_argument("--semilla", type=int, default=4601)
     parser.add_argument("--salida", default="evidence/p1", help="carpeta para CSV y resumen")
-    parser.add_argument("--prefijo", default="e3-latency")
+    parser.add_argument("--prefijo", default=PREFIJO[MOTOR])
     args = parser.parse_args()
 
     if args.corridas < 30:
         parser.error("el enunciado exige al menos 30 corridas por caso")
 
     conn = conectar(args.gateway)
-    region_gw = conn.execute("SELECT gateway_region()").fetchone()[0]
+    if MOTOR == "cockroach":
+        region_gw = conn.execute("SELECT gateway_region()").fetchone()[0]
+    else:
+        region_gw = REGION_NODO_UNICO
     region_remota = args.remota or ("cr-limon" if region_gw != "cr-limon" else "cr-sj")
 
     locales = cuentas_de(conn, region_gw, 2)
     remota = cuentas_de(conn, region_remota, 1)[0]
-    leases = esperar_leaseholders(conn, [*locales, remota])
+    if MOTOR == "cockroach":
+        leases = esperar_leaseholders(conn, [*locales, remota])
+    else:
+        leases = ["leaseholder: no aplica (un solo servidor guarda todas las filas)"]
     print("\n".join(leases))
 
     def ejecutar(caso: str, ronda: int) -> int:
@@ -208,7 +239,7 @@ def main() -> int:
                 escritor.writerow([ronda + 1, posicion + 1, caso, operacion, localidad, region_gw,
                                    hogares, inicio_utc, f"{ms:.3f}", reintentos])
 
-    lineas = [f"=== P1 · E3 latencia · {args.prefijo} ===", *entorno(conn, args, region_gw, region_remota),
+    lineas = [f"=== P1 · latencia ({MOTOR}) · {args.prefijo} ===", *entorno(conn, args, region_gw, region_remota),
               *leases, ""]
     lineas.append(f"{'caso':<16} {'desde':<8} {'hacia':<17} {'n':>4} {'p50_ms':>8} {'p99_ms':>8} "
                   f"{'media_ms':>9} {'max_ms':>8}")

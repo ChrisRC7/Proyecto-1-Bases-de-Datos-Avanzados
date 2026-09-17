@@ -9,7 +9,7 @@ máquina limpia. Todos los comandos se ejecutan en el **host**, desde la **raíz
 ## Requisitos
 
 - Docker Engine + Docker Compose v2 (`docker compose version`).
-- Puertos libres `26257` y `8080`.
+- Puertos libres `26257` y `8080` (y `5458` para PostgreSQL en E5).
 - Recomendado: 4 CPU, 4 GiB de RAM libres y 5 GiB de disco.
 - Archivo `.env` en la raíz con `COCKROACH_LICENSE=<licencia del docente>` (ver `.env.example`).
   Sin licencia, `REGIONAL BY ROW` / `GLOBAL` solo funcionan los primeros 7 días del clúster.
@@ -97,7 +97,35 @@ región del gateway SQL; *cruza región* si alguna fila tiene otra región hogar
 - Antes de medir, se comprueba que el leaseholder de cada cuenta usada esté en su región hogar.
 - Las transferencias alternan de dirección para que los saldos no se agoten.
 
-## 4. Límites que hay que declarar
+## 4. Comparación con PostgreSQL de un nodo (E5)
+
+```bash
+p1/e5.sh
+```
+
+Corre contra PostgreSQL **el mismo esquema, el mismo seed y el mismo benchmark** de E2/E3, para que la
+diferencia medida venga del motor y no de otros datos u otras operaciones.
+
+| Paso | Qué hace | Archivo |
+| --- | --- | --- |
+| 1 | Levanta PostgreSQL 16 (`make up`) | `docker-compose.yml` |
+| 2 | Crea `p1_banca` con las mismas tablas, llaves y `CHECK`, sin `LOCALITY` | [`sql/01_postgres_schema.sql`](sql/01_postgres_schema.sql) |
+| 3 | Carga los datos con `gen/seed.py` (la huella debe ser `ad995e29a16440f7`) | [`gen/seed.py`](gen/seed.py) |
+| 4 | Mide con `bench/latency.py` y guarda una foto de `docker stats` y del tamaño de los volúmenes | [`bench/latency.py`](bench/latency.py) |
+
+Los scripts no tienen versión aparte para PostgreSQL. El motor lo decide el servicio de Compose:
+`app-crdb` declara `TI4601_ENGINE=cockroach` y `app` declara `TI4601_ENGINE=postgres`.
+En PostgreSQL, las transacciones del benchmark usan `SERIALIZABLE`, igual que CockroachDB.
+
+Genera `evidence/p1/e5-postgres-latency.csv`, `evidence/p1/e5-postgres-latency-summary.txt` y
+`evidence/p1/e5-docker-stats.txt`. Si el clúster está levantado, la foto de `docker stats` incluye
+también los 3 nodos, para comparar el costo en reposo.
+
+**Cómo leer los casos en PostgreSQL:** todas las filas están en el mismo servidor. Los cuatro casos se
+conservan para comparar operación por operación con E3, pero *local* y *cruza* solo describen la región
+hogar de las filas, no una distancia.
+
+## 5. Límites que hay que declarar
 
 - **Las regiones son lógicas.** Los 3 nodos corren en la misma máquina y no hay latencia inyectada,
   así que la diferencia local/remoto medida no representa una WAN.
@@ -109,6 +137,11 @@ región del gateway SQL; *cruza región* si alguna fila tiene otra región hogar
   regiones. Este montaje demuestra la región hogar, no el cumplimiento de la regla de residencia.
 - **La prueba de falla (E4) usa `p1_control.folio_comprobante`**, que está en una base sin regiones
   con `num_replicas = 3` y sí cumple su configuración (mayoría 2/3).
+- **E5 compara contra un PostgreSQL con configuración por defecto**, sin los límites de memoria de los
+  nodos (`--cache=256MiB`). La réplica de lectura de la alternativa no se montó: con replicación
+  asíncrona no cambia la latencia de escritura del primario.
+- **El volumen `ti4601_pgdata` también contiene la base `ti4601` de los labs**, así que su tamaño es
+  una cota superior del costo en disco de `p1_banca`.
 
 ## Estructura
 
@@ -117,11 +150,12 @@ p1/
 ├── README.md          esta guía
 ├── setup.sh           configuración completa (E2)
 ├── evidence.sh        evidencia de E2
+├── e5.sh              mismo seed y benchmark contra PostgreSQL (E5)
 ├── check.py           verificador de solo lectura
 ├── docs/E1-diseno.md  diseño de fragmentación
-├── sql/               00_database, 01_schema, 02_e4_table, inspect
+├── sql/               00_database, 01_schema, 02_e4_table, inspect, 01_postgres_schema (E5)
 ├── gen/seed.py        generador determinista
-└── bench/latency.py   mediciones de E3
+└── bench/latency.py   mediciones de E3 y E5
 evidence/p1/           salidas generadas por los scripts
 ```
 
@@ -135,3 +169,4 @@ evidence/p1/           salidas generadas por los scripts
 | `[FAIL] folio_comprobante … votantes` | Esperar 1–2 minutos (reubicación de réplicas) y ejecutar `check.py` otra vez |
 | Un nodo quedó detenido | `docker start ti4601-crdb-1 ti4601-crdb-2 ti4601-crdb-3` |
 | Escrituras con p99 de cientos de ms | Clúster aún ocupado tras la carga; esperar y repetir con otro `--prefijo` |
+| `e5.sh` falla con `p1_banca tiene el esquema anterior de E5` | Quedó la base de la primera versión de E5: `docker compose run --rm app psql -c 'DROP DATABASE p1_banca'` y repetir `p1/e5.sh` |

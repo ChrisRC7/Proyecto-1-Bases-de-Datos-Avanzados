@@ -1,0 +1,13 @@
+# Generado: 2026-09-16T21:17:50-06:00 · host: chris-HP-Pavilion-Notebook · nproc: 4 · en reposo, clúster y PostgreSQL levantados
+NAME              CPU %     MEM USAGE / LIMIT     MEM %     BLOCK I/O
+ti4601-postgres   9.08%     91.45MiB / 11.57GiB   0.77%     45.6MB / 128MB
+ti4601-crdb-3     2.09%     581.7MiB / 11.57GiB   4.91%     102MB / 49.1MB
+ti4601-crdb-1     2.16%     547.7MiB / 11.57GiB   4.62%     99.7MB / 47.6MB
+ti4601-crdb-2     3.66%     519.5MiB / 11.57GiB   4.39%     105MB / 49.4MB
+
+# Tamaño de los volúmenes de datos
+VOLUME NAME                                                        LINKS     SIZE
+ti4601_crdb1                                                       1         1.128GB
+ti4601_crdb2                                                       1         1.128GB
+ti4601_crdb3                                                       1         1.126GB
+ti4601_pgdata                                                      1         131.1MB
