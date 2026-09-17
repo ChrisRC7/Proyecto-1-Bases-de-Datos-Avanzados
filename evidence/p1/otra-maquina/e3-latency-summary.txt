@@ -1,0 +1,23 @@
+=== P1 · E3 latencia · e3-latency ===
+fecha_utc: 2026-09-17T06:38:45+00:00
+motor: CockroachDB CCL v24.3.0
+gateway: crdb-1 (gateway_region=cr-sj); región remota: cr-limon
+corridas por caso: 100; warm-up descartado por caso: 10
+orden de casos: aleatorio por ronda (semilla 4601)
+cpus: 12; memoria: 7903 MiB; python 3.12.14; psycopg 3.3.5
+perfil: clúster completo del Lab 1 (3 nodos, --cache=256MiB, --max-sql-memory=256MiB), una sola máquina
+latencia inyectada: ninguna (regiones lógicas)
+reloj: time.perf_counter_ns() alrededor de la operación completa (incluye COMMIT y reintentos)
+conexión: una conexión persistente al gateway; no incluye tiempo de conexión
+p99: nearest rank
+leaseholder cuenta cr-sj: region=cr-sj,zone=a (en región hogar)
+leaseholder cuenta cr-sj: region=cr-sj,zone=a (en región hogar)
+leaseholder cuenta cr-limon: region=cr-limon,zone=a (en región hogar)
+
+caso             desde    hacia                n   p50_ms   p99_ms  media_ms   max_ms
+lectura-local    cr-sj    cr-sj              100    0.770    6.458     2.396   11.028
+lectura-remota   cr-sj    cr-limon           100    1.520   17.342     4.565   18.185
+escritura-local  cr-sj    cr-sj              100   16.467   31.236    18.088   50.923
+escritura-cruza  cr-sj    cr-limon           100   15.073   37.296    17.270   43.259
+
+Muestras crudas: evidence/p1/otra-maquina/e3-latency.csv
