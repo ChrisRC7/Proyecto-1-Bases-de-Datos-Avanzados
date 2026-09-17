@@ -3,9 +3,9 @@
 Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-east`). Defensa: **Semana 8**.
 
 ## 1. E1: Diseño de fragmentación (25 %)
-- [ ] Requisitos y regiones: operaciones típicas y frecuencia estimada
-- [ ] Esquema lógico `cliente`, `cuenta`, `movimiento` (+ tabla pequeña candidata a `GLOBAL`) con PK/FK
-- [ ] Predicados de fragmentación horizontal (`region = 'cr-sj'`…) y derivada para `cuenta` / `movimiento`
+- [x] Requisitos y regiones: operaciones típicas y frecuencia estimada
+- [x] Esquema lógico `cliente`, `cuenta`, `movimiento` (+ tabla pequeña candidata a `GLOBAL`) con PK/FK
+- [x] Predicados de fragmentación horizontal (`region = 'cr-sj'`…) y derivada para `cuenta` / `movimiento`
 - [ ] Decidir si hay fragmentación vertical de la PII
 - [ ] Tabla de verificación: completitud, reconstrucción, disyunción (con consulta SQL de prueba)
 - [ ] Tabla de réplica: qué tabla, factor y criterio de costo (`GLOBAL` vs `REGIONAL BY ROW`)
@@ -44,8 +44,8 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [ ] (Opcional) Caída de una región y efecto en sus filas RBR
 
 ## 5. E5: Crítica (15 %)
-- [ ] Correr el mismo benchmark contra Postgres de un nodo
-- [ ] Comparar latencia, complejidad operativa y costo (`docker stats`)
+- [x] Correr el mismo benchmark contra Postgres de un nodo
+- [x] Comparar latencia, complejidad operativa y costo (`docker stats`)
 - [ ] Describir la alternativa con réplica de lectura
 - [ ] Conclusión: justificado / no justificado / solo por residencia (≥ 1 página)
 
