@@ -1,0 +1,9 @@
+# Generado: 2026-09-16T11:37:02-06:00 · host: chris-HP-Pavilion-Notebook
+NAME            IMAGE                           COMMAND                  SERVICE   CREATED       STATUS         PORTS
+ti4601-crdb-1   cockroachdb/cockroach:v24.3.0   "/cockroach/cockroac…"   crdb-1    2 weeks ago   Up 8 minutes   127.0.0.1:8080->8080/tcp, 127.0.0.1:26257->26257/tcp
+ti4601-crdb-2   cockroachdb/cockroach:v24.3.0   "/cockroach/cockroac…"   crdb-2    2 weeks ago   Up 8 minutes   8080/tcp, 26257/tcp
+ti4601-crdb-3   cockroachdb/cockroach:v24.3.0   "/cockroach/cockroac…"   crdb-3    2 weeks ago   Up 8 minutes   8080/tcp, 26257/tcp
+id	address	sql_address	build	started_at	updated_at	locality	is_available	is_live
+1	crdb-1:26257	crdb-1:26257	v24.3.0	2026-09-16 17:28:34.635205 +0000 UTC	2026-09-16 17:37:01.688041 +0000 UTC	region=cr-sj,zone=a	true	true
+2	crdb-3:26257	crdb-3:26257	v24.3.0	2026-09-16 17:28:34.481783 +0000 UTC	2026-09-16 17:37:01.542227 +0000 UTC	region=us-east,zone=a	true	true
+3	crdb-2:26257	crdb-2:26257	v24.3.0	2026-09-16 17:28:34.516237 +0000 UTC	2026-09-16 17:37:01.584235 +0000 UTC	region=cr-limon,zone=a	true	true

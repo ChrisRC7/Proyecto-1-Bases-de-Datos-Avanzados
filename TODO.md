@@ -15,24 +15,24 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 
 ## 2. E2: Implementación (20 %)
 - [ ] Crear la carpeta `p1/` (sql, gen, bench, chaos, baseline)
-- [ ] Usar una base de datos propia (`p1_banca`)
-- [ ] `00_database.sql`: región primaria + regiones (idempotente)
-- [ ] `01_schema.sql`: tablas con `LOCALITY`
-- [ ] `02_e4_table.sql`: tabla del dominio con RF=3 y 3 votantes verificados
-- [ ] `gen/seed.py`: generador con semilla fija y volumen justificado
-- [ ] Script único de configuración (levantar → licencia → SQL → seed → verificar)
-- [ ] Verificador propio del P1
-- [ ] Evidencia generada por script en `evidence/p1/` (`SHOW REGIONS`, `SHOW CREATE`, `SHOW RANGES`, conteos)
-- [ ] `p1/README.md` para reproducir en una máquina limpia
+- [x] Usar una base de datos propia (`p1_banca`)
+- [x] `00_database.sql`: región primaria + regiones (idempotente)
+- [x] `01_schema.sql`: tablas con `LOCALITY`
+- [x] `02_e4_table.sql`: tabla del dominio con RF=3 y 3 votantes verificados
+- [x] `gen/seed.py`: generador con semilla fija y volumen justificado
+- [x] Script único de configuración (levantar → licencia → SQL → seed → verificar)
+- [x] Verificador propio del P1
+- [x] Evidencia generada por script en `evidence/p1/` (`SHOW REGIONS`, `SHOW CREATE`, `SHOW RANGES`, conteos)
+- [x] `p1/README.md` para reproducir en una máquina limpia
 - [ ] Probar en la máquina de otro integrante
 
 ## 3. E3: Mediciones (20 %)
-- [ ] Definir "local" vs. "cruza región" en una frase
-- [ ] `bench/latency.py` con operaciones del dominio y gateway fijo (`crdb-1`)
-  - [ ] Lectura local / lectura remota
-  - [ ] Escritura local / escritura que cruza región
-- [ ] Warm-up descartado, n ≥ 30 (ideal 100), p50 y p99, CSV crudo
-- [ ] Registrar el entorno (máquina, recursos, versión, sin latencia inyectada)
+- [x] Definir "local" vs. "cruza región" en una frase
+- [x] `bench/latency.py` con operaciones del dominio y gateway fijo (`crdb-1`)
+  - [x] Lectura local / lectura remota
+  - [x] Escritura local / escritura que cruza región
+- [x] Warm-up descartado, n ≥ 30 (ideal 100), p50 y p99, CSV crudo
+- [x] Registrar el entorno (máquina, recursos, versión, sin latencia inyectada)
 - [ ] Tabla de resultados + interpretación (por qué el p99 remoto es mayor o no)
 
 ## 4. E4: Falla de nodo (15 %)
