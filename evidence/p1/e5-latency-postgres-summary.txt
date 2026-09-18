@@ -1,0 +1,20 @@
+=== P1 · E5 baseline PostgreSQL 1 nodo · e5-latency-postgres ===
+fecha_utc: 2026-09-17T22:40:48+00:00
+motor: PostgreSQL 16.14 (Debian 16.14-1.pgdg13+1) (un solo nodo, contenedor ti4601-postgres)
+aislamiento: serializable
+filas hogar: local=cr-sj, remota=cr-limon (la región es un dato; no hay gateway ni leaseholders)
+corridas por caso: 100; warm-up descartado por caso: 10
+orden de casos: aleatorio por ronda (semilla 4601)
+cpus: 12; memoria: 7903 MiB; python 3.12.14; psycopg 3.3.5
+perfil: imagen postgres:16 del docker-compose.yml del curso, sin ajustes; misma máquina que E3
+reloj: time.perf_counter_ns() alrededor de la operación completa (incluye COMMIT y reintentos)
+conexión: una conexión persistente; no incluye tiempo de conexión
+p99: nearest rank
+
+caso             fila hogar           n   p50_ms   p99_ms  media_ms   max_ms
+lectura-local    cr-sj              100    0.171    0.250     0.181    0.533
+lectura-remota   cr-limon           100    0.172    0.348     0.182    0.392
+escritura-local  cr-sj              100    1.400    1.700     1.433    1.829
+escritura-cruza  cr-sj+cr-limon     100    1.426    1.785     1.444    1.803
+
+Muestras crudas: evidence/p1/e5-latency-postgres.csv
