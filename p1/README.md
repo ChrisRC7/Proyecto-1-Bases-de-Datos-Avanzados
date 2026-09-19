@@ -99,27 +99,27 @@ región del gateway SQL; *cruza región* si alguna fila tiene otra región hogar
 
 ## 4. Comparación con PostgreSQL de un nodo (E5)
 
+Requiere el clúster arriba y con datos (sección 2), porque la foto de costo mide los dos motores a la vez.
+
 ```bash
-p1/e5.sh
+make up
+docker compose run --rm app python3 p1/baseline/seed_pg.py      # huella esperada: ad995e29a16440f7
+docker compose run --rm app python3 p1/baseline/latency_pg.py
+p1/baseline/docker_stats.sh
 ```
 
-Corre contra PostgreSQL **el mismo esquema, el mismo seed y el mismo benchmark** de E2/E3, para que la
-diferencia medida venga del motor y no de otros datos u otras operaciones.
+Corre contra PostgreSQL **el mismo esquema, los mismos datos y las mismas cuatro operaciones** de
+E2/E3, para que la diferencia medida venga del motor y no de otros datos u otras operaciones.
 
 | Paso | Qué hace | Archivo |
 | --- | --- | --- |
-| 1 | Levanta PostgreSQL 16 (`make up`) | `docker-compose.yml` |
-| 2 | Crea `p1_banca` con las mismas tablas, llaves y `CHECK`, sin `LOCALITY` | [`sql/01_postgres_schema.sql`](sql/01_postgres_schema.sql) |
-| 3 | Carga los datos con `gen/seed.py` (la huella debe ser `ad995e29a16440f7`) | [`gen/seed.py`](gen/seed.py) |
-| 4 | Mide con `bench/latency.py` y guarda una foto de `docker stats` y del tamaño de los volúmenes | [`bench/latency.py`](bench/latency.py) |
+| 1 | Levanta PostgreSQL 16 | `docker-compose.yml` |
+| 2 | Crea `p1_banca` con el esquema traducido (sin `LOCALITY`) y carga los datos con las funciones de `gen/seed.py` | [`baseline/seed_pg.py`](baseline/seed_pg.py), [`baseline/01_schema_pg.sql`](baseline/01_schema_pg.sql) |
+| 3 | Mide con las operaciones de `bench/latency.py`, en `SERIALIZABLE` como CockroachDB | [`baseline/latency_pg.py`](baseline/latency_pg.py) |
+| 4 | `docker stats` en reposo y bajo carga, volúmenes y piezas a operar | [`baseline/docker_stats.sh`](baseline/docker_stats.sh) |
 
-Los scripts no tienen versión aparte para PostgreSQL. El motor lo decide el servicio de Compose:
-`app-crdb` declara `TI4601_ENGINE=cockroach` y `app` declara `TI4601_ENGINE=postgres`.
-En PostgreSQL, las transacciones del benchmark usan `SERIALIZABLE`, igual que CockroachDB.
-
-Genera `evidence/p1/e5-postgres-latency.csv`, `evidence/p1/e5-postgres-latency-summary.txt` y
-`evidence/p1/e5-docker-stats.txt`. Si el clúster está levantado, la foto de `docker stats` incluye
-también los 3 nodos, para comparar el costo en reposo.
+Genera `evidence/p1/e5-latency-postgres.csv`, `evidence/p1/e5-latency-postgres-summary.txt` y
+`evidence/p1/e5-docker-stats.txt`. La comparación está en [`docs/E5-comparacion.md`](docs/E5-comparacion.md).
 
 **Cómo leer los casos en PostgreSQL:** todas las filas están en el mismo servidor. Los cuatro casos se
 conservan para comparar operación por operación con E3, pero *local* y *cruza* solo describen la región
@@ -150,12 +150,12 @@ p1/
 ├── README.md          esta guía
 ├── setup.sh           configuración completa (E2)
 ├── evidence.sh        evidencia de E2
-├── e5.sh              mismo seed y benchmark contra PostgreSQL (E5)
 ├── check.py           verificador de solo lectura
-├── docs/E1-diseno.md  diseño de fragmentación
-├── sql/               00_database, 01_schema, 02_e4_table, inspect, 01_postgres_schema (E5)
+├── docs/              E1-diseno, E3-mediciones, E5-comparacion
+├── baseline/          PostgreSQL de un nodo (E5)
+├── sql/               00_database, 01_schema, 02_e4_table, inspect
 ├── gen/seed.py        generador determinista
-└── bench/latency.py   mediciones de E3 y E5
+└── bench/latency.py   mediciones de E3
 evidence/p1/           salidas generadas por los scripts
 ```
 
@@ -169,4 +169,3 @@ evidence/p1/           salidas generadas por los scripts
 | `[FAIL] folio_comprobante … votantes` | Esperar 1–2 minutos (reubicación de réplicas) y ejecutar `check.py` otra vez |
 | Un nodo quedó detenido | `docker start ti4601-crdb-1 ti4601-crdb-2 ti4601-crdb-3` |
 | Escrituras con p99 de cientos de ms | Clúster aún ocupado tras la carga; esperar y repetir con otro `--prefijo` |
-| `e5.sh` falla con `p1_banca tiene el esquema anterior de E5` | Quedó la base de la primera versión de E5: `docker compose run --rm app psql -c 'DROP DATABASE p1_banca'` y repetir `p1/e5.sh` |
