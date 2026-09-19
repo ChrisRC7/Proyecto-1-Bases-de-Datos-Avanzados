@@ -7,14 +7,14 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Esquema lógico `cliente`, `cuenta`, `movimiento` (+ tabla pequeña candidata a `GLOBAL`) con PK/FK
 - [x] Predicados de fragmentación horizontal (`region = 'cr-sj'`…) y derivada para `cuenta` / `movimiento`
 - [x] Decidir si hay fragmentación vertical de la PII
-- [ ] Tabla de verificación: completitud, reconstrucción, disyunción (con consulta SQL de prueba)
-- [ ] Tabla de réplica: qué tabla, factor y criterio de costo (`GLOBAL` vs `REGIONAL BY ROW`)
+- [x] Tabla de verificación: completitud, reconstrucción, disyunción (con consulta SQL de prueba)
+- [x] Tabla de réplica: qué tabla, factor y criterio de costo (`GLOBAL` vs `REGIONAL BY ROW`)
 - [ ] Distinguir réplica Raft de réplica de Özsu
 - [ ] Asignación fragmento → nodo/región + diagrama
 - [x] Evaluar `PLACEMENT RESTRICTED` y declarar el límite de residencia
 
 ## 2. E2: Implementación (20 %)
-- [ ] Crear la carpeta `p1/` (sql, gen, bench, chaos, baseline)
+- [x] Crear la carpeta `p1/` (sql, gen, bench, chaos, baseline)
 - [x] Usar una base de datos propia (`p1_banca`)
 - [x] `00_database.sql`: región primaria + regiones (idempotente)
 - [x] `01_schema.sql`: tablas con `LOCALITY`
@@ -36,9 +36,9 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Tabla de resultados + interpretación (por qué el p99 remoto es mayor o no)
 
 ## 4. E4: Falla de nodo (15 %)
-- [ ] Script de falla: escritura sana → mover lease → `docker stop` con época → sonda → `docker start`
-- [ ] Buscar nodo y `store_id` por localidad (no asumir que el número del contenedor es el del nodo)
-- [ ] Calcular el RTO desde el CSV y mostrar la resta
+- [x] Script de falla: escritura sana → mover lease → `docker stop` con época → sonda → `docker start`
+- [x] Buscar nodo y `store_id` por localidad (no asumir que el número del contenedor es el del nodo)
+- [x] Calcular el RTO desde el CSV y mostrar la resta
 - [ ] Verificar y discutir el RPO (commits confirmados)
 - [ ] Repetir la falla 3 veces
 - [ ] (Opcional) Caída de una región y efecto en sus filas RBR
@@ -47,7 +47,7 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Correr el mismo benchmark contra Postgres de un nodo
 - [x] Comparar latencia, complejidad operativa y costo (`docker stats`)
 - [ ] Describir la alternativa con réplica de lectura
-- [ ] Conclusión: justificado / no justificado / solo por residencia (≥ 1 página)
+- [x] Conclusión: justificado / no justificado / solo por residencia (≥ 1 página)
 
 ## 7. Informe PDF
 - [ ] Portada, requisitos, E1, E2, E3, E4, E5, apéndice con roles
