@@ -1,0 +1,259 @@
+# Generado: 2026-09-17T00:37:24-06:00 · host: iQuick-DESKTOP
+== 1. Regiones y meta de supervivencia
+ database |  region  | primary | secondary | zones 
+----------+----------+---------+-----------+-------
+ p1_banca | cr-sj    | t       | f         | {a}
+ p1_banca | cr-limon | f       | f         | {a}
+ p1_banca | us-east  | f       | f         | {a}
+(3 rows)
+
+ database | survival_goal 
+----------+---------------
+ p1_banca | zone
+(1 row)
+
+== 2. Localidad de cada tabla
+ table_name |         locality          
+------------+---------------------------
+ cliente    | REGIONAL BY ROW AS region
+ cuenta     | REGIONAL BY ROW AS region
+ moneda     | GLOBAL
+ movimiento | REGIONAL BY ROW AS region
+(4 rows)
+
+== 3. DDL generado por CockroachDB
+ table_name |                             create_statement                             
+------------+--------------------------------------------------------------------------
+ moneda     | CREATE TABLE public.moneda (                                            +
+            |         codigo CHAR(3) NOT NULL,                                        +
+            |         nombre STRING NOT NULL,                                         +
+            |         tasa_crc DECIMAL(12,4) NOT NULL,                                +
+            |         actualizado_en TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,+
+            |         CONSTRAINT moneda_pkey PRIMARY KEY (codigo ASC),                +
+            |         CONSTRAINT check_tasa_crc CHECK (tasa_crc > 0:::DECIMAL)        +
+            | ) LOCALITY GLOBAL
+(1 row)
+
+ table_name |                             create_statement                              
+------------+---------------------------------------------------------------------------
+ cliente    | CREATE TABLE public.cliente (                                            +
+            |         region public.crdb_internal_region NOT NULL,                     +
+            |         cliente_id UUID NOT NULL DEFAULT gen_random_uuid(),              +
+            |         documento STRING NOT NULL,                                       +
+            |         nombre STRING NOT NULL,                                          +
+            |         email STRING NOT NULL,                                           +
+            |         creado_en TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,      +
+            |         CONSTRAINT cliente_pkey PRIMARY KEY (region ASC, cliente_id ASC),+
+            |         UNIQUE INDEX cliente_documento_key (documento ASC)               +
+            | ) LOCALITY REGIONAL BY ROW AS region
+(1 row)
+
+ table_name |                                                         create_statement                                                         
+------------+----------------------------------------------------------------------------------------------------------------------------------
+ cuenta     | CREATE TABLE public.cuenta (                                                                                                    +
+            |         region public.crdb_internal_region NOT NULL,                                                                            +
+            |         cuenta_id UUID NOT NULL DEFAULT gen_random_uuid(),                                                                      +
+            |         cliente_id UUID NOT NULL,                                                                                               +
+            |         moneda CHAR(3) NOT NULL,                                                                                                +
+            |         saldo DECIMAL(18,2) NOT NULL,                                                                                           +
+            |         estado STRING NOT NULL DEFAULT 'ACTIVA':::STRING,                                                                       +
+            |         abierta_en TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,                                                            +
+            |         CONSTRAINT cuenta_pkey PRIMARY KEY (region ASC, cuenta_id ASC),                                                         +
+            |         CONSTRAINT cuenta_region_cliente_id_fkey FOREIGN KEY (region, cliente_id) REFERENCES public.cliente(region, cliente_id),+
+            |         CONSTRAINT cuenta_moneda_fkey FOREIGN KEY (moneda) REFERENCES public.moneda(codigo),                                    +
+            |         CONSTRAINT check_saldo CHECK (saldo >= 0:::DECIMAL),                                                                    +
+            |         CONSTRAINT check_estado CHECK (estado IN ('ACTIVA':::STRING, 'BLOQUEADA':::STRING, 'CERRADA':::STRING))                 +
+            | ) LOCALITY REGIONAL BY ROW AS region
+(1 row)
+
+ table_name |                                                              create_statement                                                              
+------------+--------------------------------------------------------------------------------------------------------------------------------------------
+ movimiento | CREATE TABLE public.movimiento (                                                                                                          +
+            |         region public.crdb_internal_region NOT NULL,                                                                                      +
+            |         movimiento_id UUID NOT NULL DEFAULT gen_random_uuid(),                                                                            +
+            |         cuenta_id UUID NOT NULL,                                                                                                          +
+            |         tipo STRING NOT NULL,                                                                                                             +
+            |         monto DECIMAL(18,2) NOT NULL,                                                                                                     +
+            |         moneda CHAR(3) NOT NULL,                                                                                                          +
+            |         saldo_resultante DECIMAL(18,2) NOT NULL,                                                                                          +
+            |         contraparte_region public.crdb_internal_region NULL,                                                                              +
+            |         contraparte_cuenta_id UUID NULL,                                                                                                  +
+            |         creado_en TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,                                                                       +
+            |         CONSTRAINT movimiento_pkey PRIMARY KEY (region ASC, movimiento_id ASC),                                                           +
+            |         CONSTRAINT movimiento_region_cuenta_id_fkey FOREIGN KEY (region, cuenta_id) REFERENCES public.cuenta(region, cuenta_id),          +
+            |         CONSTRAINT movimiento_moneda_fkey FOREIGN KEY (moneda) REFERENCES public.moneda(codigo),                                          +
+            |         INDEX movimiento_por_cuenta (region ASC, cuenta_id ASC, creado_en DESC),                                                          +
+            |         CONSTRAINT check_tipo CHECK (tipo IN ('DEPOSITO':::STRING, 'RETIRO':::STRING, 'TRANSF_ENVIO':::STRING, 'TRANSF_RECIBO':::STRING)),+
+            |         CONSTRAINT check_monto CHECK (monto > 0:::DECIMAL),                                                                               +
+            |         CONSTRAINT check_saldo_resultante CHECK (saldo_resultante >= 0:::DECIMAL)                                                         +
+            | ) LOCALITY REGIONAL BY ROW AS region
+(1 row)
+
+             table_name              |                             create_statement                             
+-------------------------------------+--------------------------------------------------------------------------
+ p1_control.public.folio_comprobante | CREATE TABLE public.folio_comprobante (                                 +
+                                     |         serie STRING NOT NULL,                                          +
+                                     |         ultimo_folio INT8 NOT NULL DEFAULT 0:::INT8,                    +
+                                     |         actualizado_en TIMESTAMPTZ NOT NULL DEFAULT now():::TIMESTAMPTZ,+
+                                     |         CONSTRAINT folio_comprobante_pkey PRIMARY KEY (serie ASC),      +
+                                     |         CONSTRAINT check_ultimo_folio CHECK (ultimo_folio >= 0:::INT8)  +
+                                     | );                                                                      +
+                                     | ALTER TABLE p1_control.public.folio_comprobante CONFIGURE ZONE USING    +
+                                     |         num_replicas = 3
+(1 row)
+
+== 4. Filas por fragmento
+   tabla    |  region  | filas 
+------------+----------+-------
+ cliente    | cr-limon |   922
+ cliente    | cr-sj    |  1473
+ cliente    | us-east  |   605
+ cuenta     | cr-limon |  1421
+ cuenta     | cr-sj    |  2205
+ cuenta     | us-east  |   901
+ movimiento | cr-limon | 29644
+ movimiento | cr-sj    | 43240
+ movimiento | us-east  | 17116
+(9 rows)
+
+ codigo |        nombre        | tasa_crc 
+--------+----------------------+----------
+ CRC    | Colón costarricense  |   1.0000
+ EUR    | Euro                 | 550.0000
+ USD    | Dólar estadounidense | 505.0000
+(3 rows)
+
+== 5. Configuración de zona (declarada)
+                                     target                                     |                                              raw_config_sql                                               
+--------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------
+ DATABASE p1_banca                                                              | ALTER DATABASE p1_banca CONFIGURE ZONE USING                                                             +
+                                                                                |         num_replicas = 5,                                                                                +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         constraints = '{+region=cr-limon: 1, +region=cr-sj: 1, +region=us-east: 1}',                     +
+                                                                                |         voter_constraints = '[+region=cr-sj]',                                                           +
+                                                                                |         lease_preferences = '[[+region=cr-sj]]'
+ PARTITION "cr-limon" OF INDEX p1_banca.public.cliente@cliente_documento_key    | ALTER PARTITION "cr-limon" OF INDEX p1_banca.public.cliente@cliente_documento_key CONFIGURE ZONE USING   +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=cr-limon]',                                                        +
+                                                                                |         lease_preferences = '[[+region=cr-limon]]'
+ PARTITION "cr-limon" OF INDEX p1_banca.public.cliente@cliente_pkey             | ALTER PARTITION "cr-limon" OF INDEX p1_banca.public.cliente@cliente_pkey CONFIGURE ZONE USING            +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=cr-limon]',                                                        +
+                                                                                |         lease_preferences = '[[+region=cr-limon]]'
+ PARTITION "cr-limon" OF INDEX p1_banca.public.cuenta@cuenta_pkey               | ALTER PARTITION "cr-limon" OF INDEX p1_banca.public.cuenta@cuenta_pkey CONFIGURE ZONE USING              +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=cr-limon]',                                                        +
+                                                                                |         lease_preferences = '[[+region=cr-limon]]'
+ PARTITION "cr-limon" OF INDEX p1_banca.public.movimiento@movimiento_pkey       | ALTER PARTITION "cr-limon" OF INDEX p1_banca.public.movimiento@movimiento_pkey CONFIGURE ZONE USING      +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=cr-limon]',                                                        +
+                                                                                |         lease_preferences = '[[+region=cr-limon]]'
+ PARTITION "cr-limon" OF INDEX p1_banca.public.movimiento@movimiento_por_cuenta | ALTER PARTITION "cr-limon" OF INDEX p1_banca.public.movimiento@movimiento_por_cuenta CONFIGURE ZONE USING+
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=cr-limon]',                                                        +
+                                                                                |         lease_preferences = '[[+region=cr-limon]]'
+ PARTITION "cr-sj" OF INDEX p1_banca.public.cliente@cliente_documento_key       | ALTER PARTITION "cr-sj" OF INDEX p1_banca.public.cliente@cliente_documento_key CONFIGURE ZONE USING      +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=cr-sj]',                                                           +
+                                                                                |         lease_preferences = '[[+region=cr-sj]]'
+ PARTITION "cr-sj" OF INDEX p1_banca.public.cliente@cliente_pkey                | ALTER PARTITION "cr-sj" OF INDEX p1_banca.public.cliente@cliente_pkey CONFIGURE ZONE USING               +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=cr-sj]',                                                           +
+                                                                                |         lease_preferences = '[[+region=cr-sj]]'
+ PARTITION "cr-sj" OF INDEX p1_banca.public.cuenta@cuenta_pkey                  | ALTER PARTITION "cr-sj" OF INDEX p1_banca.public.cuenta@cuenta_pkey CONFIGURE ZONE USING                 +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=cr-sj]',                                                           +
+                                                                                |         lease_preferences = '[[+region=cr-sj]]'
+ PARTITION "cr-sj" OF INDEX p1_banca.public.movimiento@movimiento_pkey          | ALTER PARTITION "cr-sj" OF INDEX p1_banca.public.movimiento@movimiento_pkey CONFIGURE ZONE USING         +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=cr-sj]',                                                           +
+                                                                                |         lease_preferences = '[[+region=cr-sj]]'
+ PARTITION "cr-sj" OF INDEX p1_banca.public.movimiento@movimiento_por_cuenta    | ALTER PARTITION "cr-sj" OF INDEX p1_banca.public.movimiento@movimiento_por_cuenta CONFIGURE ZONE USING   +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=cr-sj]',                                                           +
+                                                                                |         lease_preferences = '[[+region=cr-sj]]'
+ PARTITION "us-east" OF INDEX p1_banca.public.cliente@cliente_documento_key     | ALTER PARTITION "us-east" OF INDEX p1_banca.public.cliente@cliente_documento_key CONFIGURE ZONE USING    +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=us-east]',                                                         +
+                                                                                |         lease_preferences = '[[+region=us-east]]'
+ PARTITION "us-east" OF INDEX p1_banca.public.cliente@cliente_pkey              | ALTER PARTITION "us-east" OF INDEX p1_banca.public.cliente@cliente_pkey CONFIGURE ZONE USING             +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=us-east]',                                                         +
+                                                                                |         lease_preferences = '[[+region=us-east]]'
+ PARTITION "us-east" OF INDEX p1_banca.public.cuenta@cuenta_pkey                | ALTER PARTITION "us-east" OF INDEX p1_banca.public.cuenta@cuenta_pkey CONFIGURE ZONE USING               +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=us-east]',                                                         +
+                                                                                |         lease_preferences = '[[+region=us-east]]'
+ PARTITION "us-east" OF INDEX p1_banca.public.movimiento@movimiento_pkey        | ALTER PARTITION "us-east" OF INDEX p1_banca.public.movimiento@movimiento_pkey CONFIGURE ZONE USING       +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=us-east]',                                                         +
+                                                                                |         lease_preferences = '[[+region=us-east]]'
+ PARTITION "us-east" OF INDEX p1_banca.public.movimiento@movimiento_por_cuenta  | ALTER PARTITION "us-east" OF INDEX p1_banca.public.movimiento@movimiento_por_cuenta CONFIGURE ZONE USING +
+                                                                                |         num_voters = 3,                                                                                  +
+                                                                                |         voter_constraints = '[+region=us-east]',                                                         +
+                                                                                |         lease_preferences = '[[+region=us-east]]'
+ TABLE p1_banca.public.moneda                                                   | ALTER TABLE p1_banca.public.moneda CONFIGURE ZONE USING                                                  +
+                                                                                |         global_reads = true
+ TABLE p1_control.public.folio_comprobante                                      | ALTER TABLE p1_control.public.folio_comprobante CONFIGURE ZONE USING                                     +
+                                                                                |         num_replicas = 3
+(18 rows)
+
+== 6. Rangos y réplicas (observado)
+-- moneda (GLOBAL)
+ range_id | lease_holder | lease_holder_locality | voting_replicas | non_voting_replicas |                            replica_localities                            
+----------+--------------+-----------------------+-----------------+---------------------+--------------------------------------------------------------------------
+      110 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+(1 row)
+
+-- cliente (RBR)
+ range_id | lease_holder | lease_holder_locality | voting_replicas | non_voting_replicas |                            replica_localities                            
+----------+--------------+-----------------------+-----------------+---------------------+--------------------------------------------------------------------------
+      111 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      112 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      113 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      114 |            3 | region=us-east,zone=a | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      115 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      116 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      117 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      118 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      119 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+(9 rows)
+
+-- cuenta (RBR)
+ range_id | lease_holder | lease_holder_locality | voting_replicas | non_voting_replicas |                            replica_localities                            
+----------+--------------+-----------------------+-----------------+---------------------+--------------------------------------------------------------------------
+      119 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      120 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      121 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      123 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      124 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+(5 rows)
+
+-- movimiento (RBR)
+ range_id | lease_holder | lease_holder_locality  | voting_replicas | non_voting_replicas |                            replica_localities                            
+----------+--------------+------------------------+-----------------+---------------------+--------------------------------------------------------------------------
+      124 |            1 | region=cr-sj,zone=a    | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      125 |            2 | region=cr-limon,zone=a | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      126 |            1 | region=cr-sj,zone=a    | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      127 |            1 | region=cr-sj,zone=a    | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      128 |            1 | region=cr-sj,zone=a    | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      129 |            1 | region=cr-sj,zone=a    | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      130 |            1 | region=cr-sj,zone=a    | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      131 |            3 | region=us-east,zone=a  | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+      132 |            1 | region=cr-sj,zone=a    | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+(9 rows)
+
+-- p1_control.folio_comprobante (E4, RF=3)
+ range_id | lease_holder | lease_holder_locality | voting_replicas | non_voting_replicas |                            replica_localities                            
+----------+--------------+-----------------------+-----------------+---------------------+--------------------------------------------------------------------------
+      133 |            1 | region=cr-sj,zone=a   | {1,3,2}         | {}                  | {"region=cr-sj,zone=a","region=cr-limon,zone=a","region=us-east,zone=a"}
+(1 row)
+
+== 7. Nodos: node_id no coincide con el número del contenedor
+ node_id |   address    |        locality        | is_live 
+---------+--------------+------------------------+---------
+       1 | crdb-1:26257 | region=cr-sj,zone=a    | t
+       2 | crdb-2:26257 | region=cr-limon,zone=a | t
+       3 | crdb-3:26257 | region=us-east,zone=a  | t
+(3 rows)
+

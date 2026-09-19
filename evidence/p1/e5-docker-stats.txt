@@ -1,13 +1,29 @@
-# Generado: 2026-09-16T21:17:50-06:00 · host: chris-HP-Pavilion-Notebook · nproc: 4 · en reposo, clúster y PostgreSQL levantados
-NAME              CPU %     MEM USAGE / LIMIT     MEM %     BLOCK I/O
-ti4601-postgres   9.08%     91.45MiB / 11.57GiB   0.77%     45.6MB / 128MB
-ti4601-crdb-3     2.09%     581.7MiB / 11.57GiB   4.91%     102MB / 49.1MB
-ti4601-crdb-1     2.16%     547.7MiB / 11.57GiB   4.62%     99.7MB / 47.6MB
-ti4601-crdb-2     3.66%     519.5MiB / 11.57GiB   4.39%     105MB / 49.4MB
+# Generado: 2026-09-17T16:43:04-06:00 · host: iQuick-DESKTOP
+# cpus: 12 · memoria total: 7903 MiB
 
-# Tamaño de los volúmenes de datos
-VOLUME NAME                                                        LINKS     SIZE
-ti4601_crdb1                                                       1         1.128GB
-ti4601_crdb2                                                       1         1.128GB
-ti4601_crdb3                                                       1         1.126GB
-ti4601_pgdata                                                      1         131.1MB
+== reposo
+NAME              CPU %     MEM USAGE / LIMIT     NET I/O           BLOCK I/O
+ti4601-crdb-1     3.60%     676.1MiB / 7.718GiB   29.7MB / 17.9MB   141MB / 204MB
+ti4601-crdb-2     4.07%     643.7MiB / 7.718GiB   21.4MB / 25.8MB   133MB / 223MB
+ti4601-crdb-3     2.82%     662.6MiB / 7.718GiB   21.2MB / 28.4MB   161MB / 224MB
+ti4601-postgres   4.97%     86.06MiB / 7.718GiB   24.8MB / 930kB    52.8MB / 145MB
+
+== bajo carga: CockroachDB, latency.py (mejor de 66 muestras tomadas durante el benchmark)
+NAME            CPU %     MEM USAGE / LIMIT     NET I/O           BLOCK I/O
+ti4601-crdb-1   188.46%   749.2MiB / 7.718GiB   70.2MB / 67.6MB   185MB / 421MB
+ti4601-crdb-2   153.94%   721.5MiB / 7.718GiB   58.2MB / 62.7MB   186MB / 485MB
+ti4601-crdb-3   131.95%   748.1MiB / 7.718GiB   49.1MB / 46.5MB   217MB / 495MB
+
+== bajo carga: PostgreSQL, latency_pg.py (mejor de 5 muestras tomadas durante el benchmark)
+NAME              CPU %     MEM USAGE / LIMIT     NET I/O           BLOCK I/O
+ti4601-postgres   41.66%    89.82MiB / 7.718GiB   27.4MB / 2.88MB   52.9MB / 192MB
+
+== volúmenes de datos
+ti4601_crdb1     1.269GB
+ti4601_crdb2     1.265GB
+ti4601_crdb3     1.266GB
+ti4601_pgdata    133.8MB
+
+== piezas que hay que operar
+CockroachDB : 3 contenedores de datos + 1 init, 3 volúmenes, licencia, regiones, 7 pasos en p1/setup.sh
+PostgreSQL  : 1 contenedor, 1 volumen, sin licencia ni regiones, 2 comandos (seed_pg.py, latency_pg.py)

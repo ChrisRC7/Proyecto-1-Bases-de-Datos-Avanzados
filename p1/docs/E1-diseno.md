@@ -103,6 +103,29 @@ La igualdad se sostiene **porque existe la FK compuesta**. Por transitividad, to
 
 ---
 
+## 4. Decisiones sobre la PII y la residencia
+
+**Fragmentación vertical de la PII: no se aplica.** `cliente` se mantiene como una sola relación.
+La PII ya está confinada a ella por diseño (§2): `cuenta` y `movimiento` solo referencian
+`cliente_id`. Lo que la regla de residencia exige —que `nombre` y `documento` vivan en la región de
+apertura— lo cumple la fragmentación horizontal de `cliente`; separar `cliente_identidad` de
+`cliente_base` no agregaría residencia, solo columnas repartidas dentro de la misma región. Además,
+las dos operaciones que leen PII (O6, identificar por `documento`; O8, alta) leen la fila completa,
+así que la vertical añadiría un join en cada una sin ahorrar ninguna lectura.
+
+**`PLACEMENT RESTRICTED`: evaluado y no aplicado.** Esta sentencia ordena colocar todas las réplicas
+de cada partición `REGIONAL BY ROW` dentro de su región hogar. Con un nodo por región no hay dónde
+poner tres votantes en una sola región: la restricción no puede satisfacerse y el motor deja los
+rangos como están. La evidencia de E2 lo muestra: la configuración de zona declara `num_voters = 3`
+con `voter_constraints` en la región hogar (`e2-inspect.txt §5`), pero `SHOW RANGES` observa tres
+votantes repartidos en `cr-sj`, `cr-limon` y `us-east` (§6). Aplicar la sentencia cambiaría lo
+declarado sin cambiar lo observado.
+
+**Límite que se declara.** Los datos de identificación del cliente tienen región hogar en su región
+de apertura y su leaseholder se coloca allí. En este clúster de un nodo por región **no** puede
+afirmarse que las copias físicas de la PII no salgan de la región: hoy existen réplicas en las tres.
+Ninguna de las dos decisiones altera la evidencia de E2/E3 ni bloquea E4.
+
 ## Anexo — Borrador de DDL (No es el schema.sql final, pero es basado en la propuesta presentada)
 
 ```sql

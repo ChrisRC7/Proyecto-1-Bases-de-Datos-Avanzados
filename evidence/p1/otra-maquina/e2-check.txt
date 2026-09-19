@@ -1,0 +1,13 @@
+# Generado: 2026-09-17T00:37:29-06:00 · host: iQuick-DESKTOP
+[ OK ] tres nodos vivos, uno por región — regiones vivas: ['cr-limon', 'cr-sj', 'us-east']
+[ OK ] p1_banca tiene 3 regiones con cr-sj primaria — 3 regiones, primaria=['cr-sj']
+[ OK ] localidad de cada tabla (GLOBAL / RBR) — todas correctas
+[ OK ] filas en las 3 regiones — las tres tablas tienen filas en las 3 regiones
+[ OK ] completitud: toda fila tiene región — filas sin región: 0
+[ OK ] reconstrucción: unión de fragmentos = tabla — cliente 3000/3000, cuenta 4527/4527, movimiento 90000/90000
+[ OK ] fragmentación derivada respetada — cuentas fuera de región: 0, movimientos: 0
+[ OK ] doble asiento de transferencias — envíos=26358, recibos=26358
+[ OK ] saldos consistentes con movimientos — cuentas cuyo saldo no coincide con su último movimiento: 0
+[ OK ] folio_comprobante (E4) tiene 3 votantes — votantes por rango: [[1, 3, 2]]
+
+Resultado: 10/10 verificaciones.

@@ -1,0 +1,9 @@
+# Generado: 2026-09-17T00:37:20-06:00 · host: iQuick-DESKTOP
+NAME            IMAGE                           COMMAND                  SERVICE   CREATED       STATUS              PORTS
+ti4601-crdb-1   cockroachdb/cockroach:v24.3.0   "/cockroach/cockroac…"   crdb-1    2 weeks ago   Up About a minute   127.0.0.1:8080->8080/tcp, 127.0.0.1:26257->26257/tcp
+ti4601-crdb-2   cockroachdb/cockroach:v24.3.0   "/cockroach/cockroac…"   crdb-2    2 weeks ago   Up About a minute   8080/tcp, 26257/tcp
+ti4601-crdb-3   cockroachdb/cockroach:v24.3.0   "/cockroach/cockroac…"   crdb-3    2 weeks ago   Up About a minute   8080/tcp, 26257/tcp
+id	address	sql_address	build	started_at	updated_at	locality	is_available	is_live
+1	crdb-1:26257	crdb-1:26257	v24.3.0	2026-09-17 06:36:05.224126 +0000 UTC	2026-09-17 06:37:23.51923 +0000 UTC	region=cr-sj,zone=a	true	true
+2	crdb-2:26257	crdb-2:26257	v24.3.0	2026-09-17 06:36:05.228536 +0000 UTC	2026-09-17 06:37:23.581351 +0000 UTC	region=cr-limon,zone=a	true	true
+3	crdb-3:26257	crdb-3:26257	v24.3.0	2026-09-17 06:36:05.236321 +0000 UTC	2026-09-17 06:37:23.581293 +0000 UTC	region=us-east,zone=a	true	true
