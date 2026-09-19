@@ -1,0 +1,43 @@
+# Generado: 2026-09-18T20:59:05-06:00 · host: chris-HP-Pavilion-Notebook
+== 1. Completitud: toda fila cae en algún fragmento
+   tabla    | fuera_de_fragmento 
+------------+--------------------
+ cliente    |                  0
+ cuenta     |                  0
+ movimiento |                  0
+(3 rows)
+
+== 2. Reconstrucción: la unión de los fragmentos es la relación
+   tabla    | total | suma_fragmentos | faltan 
+------------+-------+-----------------+--------
+ cliente    |  3000 |            3000 |      0
+ cuenta     |  4527 |            4527 |      0
+ movimiento | 91008 |           91008 |      0
+(3 rows)
+
+== 3. Disyunción: ninguna entidad está en dos fragmentos
+   tabla    | ids_en_mas_de_un_fragmento 
+------------+----------------------------
+ cliente    |                          0
+ cuenta     |                          0
+ movimiento |                          0
+(3 rows)
+
+== 4. Derivada: cada fila está en el fragmento de su padre
+       relacion       | filas_fuera_del_fragmento_del_padre 
+----------------------+-------------------------------------
+ cuenta vs cliente    |                                   0
+ movimiento vs cuenta |                                   0
+(2 rows)
+
+== 5. Doble asiento: una transferencia entre regiones deja un movimiento por fragmento
+ region_envio | region_recibo | transferencias 
+--------------+---------------+----------------
+ cr-limon     | cr-sj         |           1938
+ cr-limon     | us-east       |            135
+ cr-sj        | cr-limon      |           2524
+ cr-sj        | us-east       |            347
+ us-east      | cr-limon      |            612
+ us-east      | cr-sj         |            580
+(6 rows)
+

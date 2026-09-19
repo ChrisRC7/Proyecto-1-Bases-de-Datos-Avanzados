@@ -126,6 +126,103 @@ de apertura y su leaseholder se coloca allí. En este clúster de un nodo por re
 afirmarse que las copias físicas de la PII no salgan de la región: hoy existen réplicas en las tres.
 Ninguna de las dos decisiones altera la evidencia de E2/E3 ni bloquea E4.
 
+---
+
+## 5. Tabla de verificación
+
+Aplica a las tres relaciones fragmentadas (`cliente` primaria; `cuenta` y `movimiento` derivadas).
+`moneda` no se fragmenta. Consultas: `p1/sql/verificacion.sql`. Salida sobre los datos cargados:
+`evidence/p1/e1-verificacion.txt` (la genera `p1/evidence.sh`).
+
+| Propiedad | ¿Se cumple? | Justificación |
+| --- | --- | --- |
+| Completitud | **sí** | Los predicados `region = 'cr-sj'`, `= 'cr-limon'` y `= 'us-east'` cubren todo el dominio de `region`: la columna es `NOT NULL` y su tipo (`crdb_internal_region`) solo admite esas tres regiones. Ninguna fila puede quedar fuera de un fragmento. En las derivadas, toda cuenta tiene un dueño (FK) y toda cuenta pertenece al fragmento de su dueño, así que tampoco sobra ninguna. Prueba: 0 filas fuera de fragmento en las tres tablas. |
+| Reconstrucción | **sí** | Horizontal: la relación es la unión de sus fragmentos, $R = R_{sj} \cup R_{limon} \cup R_{us}$. No hace falta ningún join, porque cada fragmento conserva todas las columnas y su PK. Prueba: la suma de fragmentos iguala el total (3 000 / 4 527 / 91 008) y la diferencia `tabla EXCEPT unión` da 0 filas. |
+| Disyunción | **sí** | Los predicados son igualdades sobre un mismo atributo con valores distintos: una fila no puede cumplir dos a la vez. En las derivadas, cada hija tiene un único padre (FK compuesta), así que cae en un solo fragmento. El doble asiento (§3) mantiene esto en las transferencias entre regiones: son **dos** movimientos, uno por fragmento. Prueba: 0 identificadores con más de una región. |
+
+Consultas de prueba (extracto; el archivo tiene las tres tablas):
+
+```sql
+-- Completitud: filas que no caen en ningún fragmento → 0
+SELECT count(*) FROM cliente
+WHERE region IS NULL OR region NOT IN ('cr-sj', 'cr-limon', 'us-east');
+
+-- Reconstrucción: filas de la tabla que no salen de la unión de fragmentos → 0
+SELECT count(*) FROM (
+    SELECT region, cliente_id FROM cliente
+    EXCEPT
+    SELECT region, cliente_id FROM (
+        SELECT region, cliente_id FROM cliente WHERE region = 'cr-sj'
+        UNION ALL SELECT region, cliente_id FROM cliente WHERE region = 'cr-limon'
+        UNION ALL SELECT region, cliente_id FROM cliente WHERE region = 'us-east') u);
+
+-- Disyunción: misma entidad en más de un fragmento → 0
+SELECT count(*) FROM (
+    SELECT cliente_id FROM cliente GROUP BY cliente_id HAVING count(DISTINCT region) > 1);
+
+-- Derivada: cuentas fuera del fragmento de su dueño → 0 (igual para movimiento/cuenta)
+SELECT count(*) FROM cuenta c JOIN cliente k ON k.cliente_id = c.cliente_id
+WHERE k.region <> c.region;
+```
+
+Resultado (`e1-verificacion.txt`, 2026-09-18):
+
+| Comprobación | `cliente` | `cuenta` | `movimiento` |
+| --- | ---: | ---: | ---: |
+| Filas fuera de todo fragmento | 0 | 0 | 0 |
+| Total / suma de fragmentos | 3 000 / 3 000 | 4 527 / 4 527 | 91 008 / 91 008 |
+| Filas que no salen de la unión | 0 | 0 | 0 |
+| Identificadores en más de un fragmento | 0 | 0 | 0 |
+| Filas fuera del fragmento de su padre | — | 0 | 0 |
+
+`movimiento` tiene 91 008 filas y no las 90 000 del seed: cada transferencia medida en E3 agrega dos
+movimientos. La verificación se hace sobre el estado real, no sobre el recién cargado. La misma
+consulta cuenta las transferencias entre regiones por par (`cr-sj → cr-limon`: 2 524, etc.). Cada una
+dejó su envío y su recibo en fragmentos distintos, y ninguna fila aparece en dos.
+
+---
+
+## 6. Réplica
+
+Qué se replica, con qué factor y por qué. "Declarado" es lo que pide la configuración de zona
+(`e2-inspect.txt §5`); "observado" es lo que muestra `SHOW RANGES` (§6).
+
+| Tabla / fragmento | Localidad | Réplicas declaradas | Réplicas observadas | Lectura servida desde | Criterio de costo |
+| --- | --- | --- | --- | --- | --- |
+| `moneda` (completa) | `GLOBAL` | una por región (`global_reads = true`) | 3 votantes, una por región | **cualquier región**, localmente | Replicar completo: se lee desde todas las regiones y casi no se escribe |
+| `cliente_r` | RBR | 3 votantes en `r`, 5 réplicas en total | 3 votantes, uno por región | leaseholder en `r` | Un fragmento por región; se replica por disponibilidad, no para leerlo lejos |
+| `cuenta_r`, `movimiento_r` | RBR (derivada) | igual que `cliente_r` | igual | leaseholder en `r` | Igual; viajan con su cliente |
+| `p1_control.folio_comprobante` | sin regiones | `num_replicas = 3` | 3 votantes | leaseholder (uno) | Factor 3 exacto para medir la mayoría 2/3 en E4 |
+
+**`moneda`: replicación completa en las tres regiones.** Es la única tabla que se replica para
+*leer cerca*. Los depósitos, retiros y transferencias (O3–O5) consultan la tasa (O7, ~300 ‰ según §1)
+en las tres regiones. Se escribe una vez al día. Si tuviera una sola región hogar, cada transferencia desde
+`cr-limon` o `us-east` haría un join remoto contra `cr-sj` para convertir el monto. Con `GLOBAL`, cada
+nodo sirve la lectura con su propia copia, sin salir de la región. El precio lo pagan las
+escrituras: un `UPDATE` de `moneda` espera a que la escritura sea visible en todas las réplicas
+(*commit wait*) y es más lento que una escritura RBR. Con ~1 escritura diaria frente a cientos de
+lecturas por cada mil operaciones, el costo se paga en la operación más rara. La tabla es pequeña (3
+filas), así que tenerla completa en cada región casi no cuesta disco.
+
+**`cliente`, `cuenta`, `movimiento`: fragmento en su región, sin copias para lectura remota.** No se
+replican para que otra región los lea: el ~95 % de las operaciones es local (§1), y replicarlos
+fuera de su región iría **contra** la regla de residencia de la PII. Cada fragmento tiene su
+leaseholder en su región hogar, que es la copia que atiende lecturas y coordina escrituras. Las
+réplicas adicionales (factor 3) existen solo por **disponibilidad**: si cae el nodo del
+leaseholder, otra réplica con los datos confirmados toma el lease. Esto es lo que mide E4. La
+consecuencia medida en E3: leer un fragmento de otra región cuesta el salto hasta su leaseholder (p99
+~3× el local). Se acepta porque esa lectura es rara (O9, reporte batch).
+
+**Factor 3 y no más.** Con 3 réplicas, una escritura se confirma cuando la tienen 2 (mayoría). Así
+se tolera la caída de 1 nodo sin perder escrituras confirmadas. Factor 5 toleraría 2 caídas, pero
+cada escritura esperaría a 3 réplicas y harían falta al menos 5 nodos. Con 3 nodos, 3 es el máximo
+útil.
+
+**Declarado ≠ observado en RBR.** La configuración pide 3 votantes **dentro** de la región hogar y 5
+réplicas en total. Con un nodo por región eso no se puede cumplir, y el motor deja 3 votantes
+repartidos en las tres regiones (el límite de §4). La tabla de E4 se sacó a una base sin regiones
+(`p1_control`) precisamente para medir la falla sobre un factor 3 que sí se cumple como se declara.
+
 ## Anexo — Borrador de DDL (No es el schema.sql final, pero es basado en la propuesta presentada)
 
 ```sql
