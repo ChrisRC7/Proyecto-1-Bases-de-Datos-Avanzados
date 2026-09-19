@@ -63,6 +63,7 @@ Genera, con marca de tiempo:
 | `evidence/p1/e2-node-status.txt` | Contenedores y `cockroach node status` |
 | `evidence/p1/e2-inspect.txt` | `SHOW REGIONS`, localidad de cada tabla, `SHOW CREATE TABLE`, filas por fragmento, configuración de zona y `SHOW RANGES … WITH DETAILS` |
 | `evidence/p1/e2-check.txt` | Salida del verificador (10 comprobaciones) |
+| `evidence/p1/e1-verificacion.txt` | Completitud, reconstrucción, disyunción y derivada de la tabla de verificación del E1 (`sql/verificacion.sql`) |
 
 ## 3. Mediciones de latencia (E3)
 
@@ -97,7 +98,29 @@ región del gateway SQL; *cruza región* si alguna fila tiene otra región hogar
 - Antes de medir, se comprueba que el leaseholder de cada cuenta usada esté en su región hogar.
 - Las transferencias alternan de dirección para que los saldos no se agoten.
 
-## 4. Comparación con PostgreSQL de un nodo (E5)
+## 4. Falla de un nodo (E4)
+
+```bash
+p1/chaos/falla.sh                  # corrida 1: cae el nodo de cr-limon durante 15 s
+p1/chaos/falla.sh --corrida 2      # repeticiones, sin pisar la evidencia anterior
+```
+
+| Paso | Qué hace |
+| --- | --- |
+| 1 | Comprueba que haya 3 nodos vivos |
+| 2 | Busca por **localidad** el `node_id`, el `store_id` y el contenedor del nodo que caerá (el número del contenedor no es el del nodo) |
+| 3 | Hace una escritura sana y mueve el lease de `folio_comprobante` a ese nodo (`ALTER RANGE RELOCATE LEASE`) |
+| 4 | Lanza la sonda: toma folios cada 0,2 s por `crdb-1`, con `statement_timeout` de 2 s |
+| 5 | `docker stop --timeout 0` y guarda la época del stop; `CAIDO` segundos después, `docker start` |
+| 6 | Guarda el estado final: nodos, lease y último folio confirmado |
+| 7 | Calcula el RTO desde el CSV y muestra la resta (`chaos/rto.py`) |
+
+Genera `evidence/p1/e4-corrida<N>-antes.txt`, `.csv`, `-sonda.txt`, `-stop.epoch`, `-stop.txt`,
+`-despues.txt` y `-rto.txt`. Si el script se interrumpe, vuelve a arrancar el nodo al salir. Opciones:
+`--region` (por defecto `cr-limon`), `--caido` (15 s) y `--corrida`. Resultados en
+[`docs/E4-falla.md`](docs/E4-falla.md).
+
+## 5. Comparación con PostgreSQL de un nodo (E5)
 
 Requiere el clúster arriba y con datos (sección 2), porque la foto de costo mide los dos motores a la vez.
 
@@ -125,7 +148,7 @@ Genera `evidence/p1/e5-latency-postgres.csv`, `evidence/p1/e5-latency-postgres-s
 conservan para comparar operación por operación con E3, pero *local* y *cruza* solo describen la región
 hogar de las filas, no una distancia.
 
-## 5. Límites que hay que declarar
+## 6. Límites que hay que declarar
 
 - **Las regiones son lógicas.** Los 3 nodos corren en la misma máquina y no hay latencia inyectada,
   así que la diferencia local/remoto medida no representa una WAN.
@@ -149,11 +172,12 @@ hogar de las filas, no una distancia.
 p1/
 ├── README.md          esta guía
 ├── setup.sh           configuración completa (E2)
-├── evidence.sh        evidencia de E2
+├── evidence.sh        evidencia de E1 (verificación) y E2
 ├── check.py           verificador de solo lectura
-├── docs/              E1-diseno, E3-mediciones, E5-comparacion
+├── docs/              E1-diseno, E3-mediciones, E4-falla, E5-comparacion
+├── chaos/             falla de un nodo, sonda y RTO (E4)
 ├── baseline/          PostgreSQL de un nodo (E5)
-├── sql/               00_database, 01_schema, 02_e4_table, inspect
+├── sql/               00_database, 01_schema, 02_e4_table, inspect, verificacion
 ├── gen/seed.py        generador determinista
 └── bench/latency.py   mediciones de E3
 evidence/p1/           salidas generadas por los scripts
