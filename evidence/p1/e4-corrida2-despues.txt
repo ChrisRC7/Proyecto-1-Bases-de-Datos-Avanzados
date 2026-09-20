@@ -1,0 +1,19 @@
+# Generado: 2026-09-19T23:37:02-06:00 · host: iQuick-DESKTOP · corrida 2
+== nodos
+id	address	sql_address	build	started_at	updated_at	locality	is_available	is_live
+1	crdb-1:26257	crdb-1:26257	v24.3.0	2026-09-20 05:33:45.106497 +0000 UTC	2026-09-20 05:37:03.511061 +0000 UTC	region=cr-sj,zone=a	true	true
+2	crdb-2:26257	crdb-2:26257	v24.3.0	2026-09-20 05:36:24.917917 +0000 UTC	2026-09-20 05:37:01.007712 +0000 UTC	region=cr-limon,zone=a	true	true
+3	crdb-3:26257	crdb-3:26257	v24.3.0	2026-09-20 05:33:45.538618 +0000 UTC	2026-09-20 05:37:00.828448 +0000 UTC	region=us-east,zone=a	true	true
+
+== rango (lease y votantes tras la recuperación)
+ range_id | lease_holder | lease_holder_locality | voting_replicas 
+----------+--------------+-----------------------+-----------------
+      133 |            3 | region=us-east,zone=a | {1,3,2}
+(1 row)
+
+== folio confirmado al final
+     serie      | ultimo_folio |        actualizado_en         
+----------------+--------------+-------------------------------
+ TRANSFERENCIAS |          268 | 2026-09-20 05:37:00.785175+00
+(1 row)
+

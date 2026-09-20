@@ -1,0 +1,14 @@
+CSV: evidence/p1/e4-corrida3.csv (276 intentos)
+docker stop terminó: 1789882691.632364 (2026-09-20T05:38:11.632+00:00)
+Intentos antes del stop: 28 (ok 28, error 0)
+Último OK antes del stop: intento 28, folio 297, fin 1789882691.113867
+En curso al detener el nodo: intento 29 (empezó 0.326 s antes), error, 2007.7 ms QueryCanceled: query execution canceled due to statement timeout
+
+Errores entre el stop y la recuperación: 2
+    2 × QueryCanceled: query execution canceled due to statement timeout
+OK con latencia > 100 ms después del stop: 12 (máx 1471.2 ms)
+
+Primer OK que empezó después del stop: intento 31, folio 298, latencia 1471.2 ms
+  fin_epoch  = 1789882696.788324 (2026-09-20T05:38:16.788+00:00)
+  stop_epoch = 1789882691.632364 (2026-09-20T05:38:11.632+00:00)
+  RTO = 1789882696.788324 − 1789882691.632364 = 5.156 s = 5156 ms

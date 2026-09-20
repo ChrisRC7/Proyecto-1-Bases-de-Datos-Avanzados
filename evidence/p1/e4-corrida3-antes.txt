@@ -1,0 +1,29 @@
+# Generado: 2026-09-19T23:37:56-06:00 · host: iQuick-DESKTOP · corrida 3
+region=cr-limon → node_id=2, store_id=2, dirección=crdb-2, contenedor=ti4601-crdb-2
+
+== nodos y stores
+ node_id | store_id |   address    |        locality        | is_live 
+---------+----------+--------------+------------------------+---------
+       1 |        1 | crdb-1:26257 | region=cr-sj,zone=a    | t
+       2 |        2 | crdb-2:26257 | region=cr-limon,zone=a | t
+       3 |        3 | crdb-3:26257 | region=us-east,zone=a  | t
+(3 rows)
+
+== escritura sana (antes de mover el lease)
+     serie      | ultimo_folio |        actualizado_en         
+----------------+--------------+-------------------------------
+ TRANSFERENCIAS |          269 | 2026-09-20 05:37:58.844243+00
+(1 row)
+
+== rango antes de mover el lease
+ range_id | lease_holder | lease_holder_locality | voting_replicas 
+----------+--------------+-----------------------+-----------------
+      133 |            1 | region=cr-sj,zone=a   | {1,3,2}
+(1 row)
+
+== rango después de mover el lease al store 2
+ range_id | lease_holder | lease_holder_locality  | voting_replicas 
+----------+--------------+------------------------+-----------------
+      133 |            2 | region=cr-limon,zone=a | {1,3,2}
+(1 row)
+

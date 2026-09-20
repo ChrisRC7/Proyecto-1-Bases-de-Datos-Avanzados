@@ -1,0 +1,2 @@
+stop:  2026-09-19T23:38:11,635138887-06:00  (ti4601-crdb-2, node_id=2, region=cr-limon, leaseholder del rango)
+start: 2026-09-19T23:38:27,593052274-06:00  (ti4601-crdb-2)

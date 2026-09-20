@@ -1,0 +1,19 @@
+CSV: evidence/p1/e4-corrida2.csv (270 intentos: 267 ok, 3 error)
+docker stop terminó: 1789882566.784132
+
+1. Secuencia de folios confirmados
+   primero 2 (intento 1), último 268 (intento 270)
+   [ OK ] ningún folio se repite ni retrocede
+   [ OK ] sin huecos: ningún intento con error llegó a confirmarse
+
+2. Cruce de la falla
+   último OK antes del stop:    intento 28, folio 29
+   primer OK después del stop:  intento 32, folio 30
+   intentos con resultado desconocido entre ambos: 3 (QueryCanceled)
+   [ OK ] 30 = 29 + 1 + 0: el folio 29 sobrevivió a la falla; de los 3 intentos dudosos, 0 confirmaron y 3 no
+
+3. Folio final en la base
+   base: 268 · último confirmado por la sonda: 268
+   [ OK ] coinciden: todo lo confirmado está en la base y nada más
+
+RPO para escrituras confirmadas: 0 — ninguna escritura confirmada se perdió (3/3 comprobaciones)
