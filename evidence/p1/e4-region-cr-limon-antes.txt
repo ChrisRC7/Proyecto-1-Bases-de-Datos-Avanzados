@@ -1,0 +1,8 @@
+# Generado: 2026-09-20T17:53:48-06:00 · host: chris-HP-Pavilion-Notebook · región caída: cr-limon
+region=cr-limon → node_id=3, contenedor=ti4601-crdb-2
+
+leaseholder cuenta cr-sj: region=cr-sj,zone=a (en región hogar)
+leaseholder cuenta cr-sj: region=cr-sj,zone=a (en región hogar)
+leaseholder cuenta cr-limon: region=cr-limon,zone=a (en región hogar)
+leaseholder cuenta cr-limon: region=cr-limon,zone=a (en región hogar)
+leaseholder moneda (GLOBAL): region=cr-sj,zone=a

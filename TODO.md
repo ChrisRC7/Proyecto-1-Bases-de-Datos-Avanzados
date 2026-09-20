@@ -41,12 +41,12 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Calcular el RTO desde el CSV y mostrar la resta
 - [x] Verificar y discutir el RPO (commits confirmados)
 - [x] Repetir la falla 3 veces
-- [ ] (Opcional) Caída de una región y efecto en sus filas RBR
+- [x] (Opcional) Caída de una región y efecto en sus filas RBR
 
 ## 5. E5: Crítica (15 %)
 - [x] Correr el mismo benchmark contra Postgres de un nodo
 - [x] Comparar latencia, complejidad operativa y costo (`docker stats`)
-- [ ] Describir la alternativa con réplica de lectura
+- [x] Describir la alternativa con réplica de lectura
 - [x] Conclusión: justificado / no justificado / solo por residencia (≥ 1 página)
 
 ## 7. Informe PDF

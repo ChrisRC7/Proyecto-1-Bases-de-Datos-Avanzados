@@ -1,0 +1,7 @@
+# Generado: 2026-09-20T17:54:11-06:00 · host: chris-HP-Pavilion-Notebook · región caída: cr-limon
+== leases con cr-limon caída (15 s después del stop)
+leaseholder cuenta cr-sj: region=cr-sj,zone=a (en región hogar)
+leaseholder cuenta cr-sj: region=cr-sj,zone=a (en región hogar)
+leaseholder cuenta cr-limon: region=us-east,zone=a (FUERA de región hogar)
+leaseholder cuenta cr-limon: region=us-east,zone=a (FUERA de región hogar)
+leaseholder moneda (GLOBAL): region=cr-sj,zone=a

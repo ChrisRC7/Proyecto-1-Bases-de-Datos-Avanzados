@@ -1,0 +1,28 @@
+# Generado: 2026-09-20T17:54:51-06:00 · host: chris-HP-Pavilion-Notebook · región caída: cr-limon
+== nodos
+id	address	sql_address	build	started_at	updated_at	locality	is_available	is_live
+1	crdb-1:26257	crdb-1:26257	v24.3.0	2026-09-20 23:49:16.673366 +0000 UTC	2026-09-20 23:54:51.207713 +0000 UTC	region=cr-sj,zone=a	true	true
+2	crdb-3:26257	crdb-3:26257	v24.3.0	2026-09-20 23:49:16.522396 +0000 UTC	2026-09-20 23:54:49.567338 +0000 UTC	region=us-east,zone=a	true	true
+3	crdb-2:26257	crdb-2:26257	v24.3.0	2026-09-20 23:54:30.671202 +0000 UTC	2026-09-20 23:54:48.733509 +0000 UTC	region=cr-limon,zone=a	true	true
+
+== leases tras volver la región
+(espera de leases en región hogar: 30 s, límite 300 s)
+leaseholder cuenta cr-sj: region=cr-sj,zone=a (en región hogar)
+leaseholder cuenta cr-sj: region=cr-sj,zone=a (en región hogar)
+leaseholder cuenta cr-limon: region=cr-limon,zone=a (en región hogar)
+leaseholder cuenta cr-limon: region=cr-limon,zone=a (en región hogar)
+leaseholder moneda (GLOBAL): region=cr-sj,zone=a
+
+== verificador (saldos y doble asiento tras las transferencias de la prueba)
+[ OK ] tres nodos vivos, uno por región — regiones vivas: ['cr-limon', 'cr-sj', 'us-east']
+[ OK ] p1_banca tiene 3 regiones con cr-sj primaria — 3 regiones, primaria=['cr-sj']
+[ OK ] localidad de cada tabla (GLOBAL / RBR) — todas correctas
+[ OK ] filas en las 3 regiones — las tres tablas tienen filas en las 3 regiones
+[ OK ] completitud: toda fila tiene región — filas sin región: 0
+[ OK ] reconstrucción: unión de fragmentos = tabla — cliente 3000/3000, cuenta 4527/4527, movimiento 92272/92272
+[ OK ] fragmentación derivada respetada — cuentas fuera de región: 0, movimientos: 0
+[ OK ] doble asiento de transferencias — envíos=27494, recibos=27494
+[ OK ] saldos consistentes con movimientos — cuentas cuyo saldo no coincide con su último movimiento: 0
+[ OK ] folio_comprobante (E4) tiene 3 votantes — votantes por rango: [[1, 3, 2]]
+
+Resultado: 10/10 verificaciones.

@@ -1,7 +1,8 @@
 # E4 — Falla de un nodo
 
-Script: `p1/chaos/falla.sh` (orquesta), `p1/chaos/sonda.py` (escribe), `p1/chaos/rto.py` (calcula).
-Evidencia de la corrida 1: `evidence/p1/e4-corrida1-*`. Cómo repetirla: `p1/README.md §4`.
+Script: `p1/chaos/falla.sh` (orquesta), `p1/chaos/sonda.py` (escribe), `p1/chaos/rto.py` (RTO),
+`p1/chaos/rpo.py` (RPO) y `p1/chaos/region.sh` / `region.py` (caída de una región, opcional).
+Evidencia: `evidence/p1/e4-corrida{1,2,3}-*` y `evidence/p1/e4-region-cr-limon-*`. Cómo repetirla: `p1/README.md §4`.
 
 ## Qué se escribe y sobre qué tabla
 
@@ -106,8 +107,128 @@ leaseholder y la sonda la canceló a los 2 s. No hubo errores de conexión, porq
 cayó. Esos dos intentos tienen resultado desconocido para el cliente: no se cuentan como
 confirmados.
 
-## Pendiente (TODO.md §4)
+## Repeticiones: 3 corridas
 
-- Verificar y discutir el RPO con los folios: `-despues.txt` y el CSV tienen lo necesario (último
-  folio confirmado antes del stop, folios confirmados después y folio final).
-- Repetir la falla 3 veces (`--corrida 2`, `--corrida 3`) y reportar el RTO de cada una.
+La misma prueba se repitió con `p1/chaos/falla.sh --corrida 2` y `--corrida 3`. Esas dos corridas se
+hicieron en la máquina de otro integrante (`iQuick-DESKTOP`). Allí `crdb-2` es el **nodo 2** y no el
+3, y `falla.sh` lo encontró igual por localidad (`-antes.txt`), sin cambiar el script.
+
+| Corrida | Fecha · máquina | Nodo caído (`cr-limon`) | Último OK antes | Primer OK después | Errores (timeout) | RTO |
+| --- | --- | --- | --- | --- | ---: | ---: |
+| 1 | 2026-09-18 · chris-HP (4 CPU) | nodo 3 / `crdb-2` | intento 28, folio 29 | intento 31, folio 30 | 2 | **4,620 s** |
+| 2 | 2026-09-19 · iQuick-DESKTOP | nodo 2 / `crdb-2` | intento 28, folio 29 | intento 32, folio 30 | 3 | **6,530 s** |
+| 3 | 2026-09-19 · iQuick-DESKTOP | nodo 2 / `crdb-2` | intento 28, folio 297 | intento 31, folio 298 | 2 | **5,156 s** |
+
+Restas (de `-rto.txt`):
+
+```text
+corrida 1: 1789786892.417700 − 1789786887.797719 = 4.620 s
+corrida 2: 1789882573.314526 − 1789882566.784132 = 6.530 s
+corrida 3: 1789882696.788324 − 1789882691.632364 = 5.156 s
+```
+
+**RTO observado: 4,6–6,5 s; mediana 5,2 s.** Siempre es una cota superior: la sonda con
+`statement_timeout = 2 s` solo ve la recuperación cuando termina un intento (resolución ≈ un
+intento). La variación entre corridas cabe en esa resolución, más la diferencia de hardware y de
+cuándo expira la *liveness* del nodo caído respecto al último latido. El orden de magnitud es
+estable. El RTO no depende de un operador: lo marca el tiempo en que el clúster declara muerto al
+nodo y otro votante toma el lease.
+
+En la corrida 3, 12 escrituras posteriores al stop tardaron más de 100 ms (máx. 1,47 s). El
+lease se recuperó, pero el rango siguió funcionando sin un votante hasta el `docker start`, en una
+máquina ocupada. Ninguna de esas escrituras falló.
+
+## RPO: ninguna escritura confirmada se perdió
+
+`p1/chaos/rpo.py` convierte el RPO en una comprobación aritmética. La sonda pide folios
+consecutivos y guarda el folio que recibió cada intento OK. Si el clúster "olvidara" una
+escritura confirmada, un folio se repetiría o retrocedería. Tres pruebas por corrida
+(`-rpo.txt`):
+
+| Prueba | Corrida 1 | Corrida 2 | Corrida 3 |
+| --- | --- | --- | --- |
+| 1. Folios confirmados sin repetir ni retroceder | OK (2 → 279) | OK (2 → 268) | OK (270 → 543) |
+| 2. Primer OK tras el stop = último antes + 1 | 30 = 29 + 1 | 30 = 29 + 1 | 298 = 297 + 1 |
+| 3. Folio final en la base = último confirmado | 279 = 279 | 268 = 268 | 543 = 543 |
+| **RPO para lo confirmado** | **0** | **0** | **0** |
+
+**Qué significa y qué no.** RPO = 0 se refiere a las escrituras **confirmadas** al cliente. Es la
+garantía de Raft: un commit se confirma solo cuando la entrada está persistida en la mayoría (2 de
+3). Cualquier mayoría futura intersecta con esa, así que el nuevo leaseholder tiene la escritura.
+Los intentos con timeout (2, 3 y 2) tienen resultado **desconocido** para el cliente. La prueba 2
+lo resuelve: si alguno se hubiera confirmado en el servidor, el folio siguiente saltaría (29 → 31).
+No saltó en ninguna corrida, así que ninguno se confirmó. Una aplicación real tendría que reintentar
+esos intentos de forma idempotente, porque desde el cliente no se distingue "no se hizo" de "se hizo
+y no me enteré".
+
+---
+
+## Caída de una región (opcional) y efecto en sus filas RBR
+
+Script: `p1/chaos/region.sh` (orquesta) y `p1/chaos/region.py` (sonda, leases y resumen).
+Evidencia: `evidence/p1/e4-region-cr-limon-*`. Corrida: 2026-09-20, chris-HP (4 CPU / 11,8 GiB).
+
+**Qué cambia respecto a la prueba anterior.** Con un nodo por región, detener `crdb-2` es perder
+`cr-limon` completa. Aquí **no se mueve ningún lease**: se observa la colocación diseñada en E1 §8
+(cada fragmento con su leaseholder en casa) y se mide cada fragmento por separado. Hay seis casos,
+cada uno en su hilo y su conexión a `crdb-1`, cada 0,2 s y con `statement_timeout = 2 s`. Así, un
+caso bloqueado no retrasa a los demás. Las escrituras son las transferencias de E3 (doble asiento),
+y `check.py` dio 10/10 después de la prueba (`-despues.txt`).
+
+**Quién atiende cada fragmento** (`-antes.txt`, `-durante.txt`, `-despues.txt`):
+
+| Momento | `cuenta_sj` | `cuenta_limon` | `moneda` |
+| --- | --- | --- | --- |
+| Antes | `cr-sj` | `cr-limon` (hogar) | `cr-sj` (coordina escrituras; cada región lee su copia) |
+| 15 s después del stop | `cr-sj` | **`us-east`** (fuera de hogar) | `cr-sj` |
+| Tras `docker start` | `cr-sj` | `cr-limon`, de vuelta en 30 s | `cr-sj` |
+
+**Resultado por caso** (`-resumen.txt`; región caída 31,8 s):
+
+| Caso | p50 antes (ms) | Errores durante | Vuelve a responder (s) | Estable desde (s) | p50 estable (ms) | Errores al reintegrarse |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `lee-limon` (O1, región caída) | 1,61 | 3 | **5,9** | 10,0 | 1,56 | 2 |
+| `escribe-limon` (O4, región caída) | 26,75 | 4 | **6,3** | 11,8 | 24,14 | 2 |
+| `escribe-cruza` (O5, `cr-sj`↔`cr-limon`) | 54,29 | 4 | **9,5** | 12,4 | 23,79 | 2 |
+| `lee-sj` (O1, región viva) | 1,10 | 2 | 0,04 | 12,0 | 14,16 | 2 |
+| `escribe-sj` (O4, región viva) | 23,10 | 2 | 0,07 | 12,2 | 23,16 | 2 |
+| `lee-moneda` (O7, `GLOBAL`) | 1,07 | **0** | 0,04 | 0 | 0,95 | 1 |
+
+**Interpretación.**
+
+1. **Las filas de la región caída no se pierden ni quedan inaccesibles: quedan ~6 s sin
+   servicio y después las atiende otra región.** Sus votantes Raft están repartidos uno por
+   región (E1 §7–§8), así que al caer `cr-limon` cada rango `*_limon` conserva 2 de 3 votantes. El
+   lease pasa a `us-east` y las operaciones O1/O4 sobre cuentas de `cr-limon` vuelven a los ~6 s,
+   lo mismo que el RTO de la prueba anterior. Durante la caída leer una cuenta de `cr-limon` cuesta
+   lo mismo que antes (1,56 frente a 1,61 ms): sin latencia inyectada, ir a `us-east` o a `cr-limon`
+   cuesta igual desde `cr-sj`.
+2. **Esa disponibilidad es la otra cara del límite de residencia.** Las filas de `cr-limon`
+   sobreviven a la pérdida de su región *porque* tienen copias fuera de ella. Con la topología que
+   exige la residencia (3 nodos por región + `PLACEMENT RESTRICTED`, E1 §4), los 3 votantes de
+   `cliente_limon` estarían en `cr-limon`. Perder la región dejaría sus filas **sin servicio**
+   hasta que vuelva, mientras que `cr-sj` y `us-east` seguirían intactas. Residencia estricta y
+   supervivencia a la pérdida de región son incompatibles para un mismo fragmento. Para tener las
+   dos, CockroachDB ofrece `SURVIVE REGION FAILURE`, que coloca réplicas en otras regiones, es decir,
+   renuncia a la residencia estricta.
+3. **`moneda` (GLOBAL) no se interrumpió** durante la caída: cero errores y la misma latencia. Cada
+   región lee su propia copia (E1 §6). Es la tabla que justifica su replicación completa.
+4. **La transferencia que cruza regiones es la última en volver (9,5 s)**, porque necesita que
+   estén disponibles los rangos de las dos regiones que toca. Con la región caída, su p50 bajó de 54
+   a 24 ms: ya no espera al leaseholder en `crdb-2`, sino a uno en `us-east`, en una máquina con un
+   nodo menos compitiendo por CPU.
+5. **Las regiones vivas también notaron la falla.** `lee-sj` y `escribe-sj` tuvieron 2 timeouts
+   cada uno entre los 6 y 12 s, y `lee-sj` quedó en ~14 ms hasta la reintegración. Hay dos causas
+   plausibles: el clúster reubica los leases de rangos de sistema que estaban en `crdb-2`, y cada
+   rango `*_sj` queda con 2 votantes, así que cada escritura necesita a los dos. El aumento de
+   `lee-sj` no se reproduce aislado: con `crdb-2` detenido, una lectura `cr-sj` sin escritores o con
+   uno sigue en ~1 ms (`e4-region-diagnostico.txt`). Aparece solo con la caída más los seis casos
+   concurrentes, que comparten filas (`escribe-sj` y `escribe-cruza` escriben la misma cuenta). Se
+   declara como observado, no como explicado del todo.
+6. **Volver a tres nodos tampoco es gratis.** Entre 13 y 21 s después del `docker start`, **todos**
+   los casos, incluso `moneda`, tuvieron 1–2 timeouts: el nodo reintegrado se pone al día (Raft) y
+   los leases de `cr-limon` vuelven a su región por `lease_preferences`, lo que tardó 30 s. Una
+   reintegración real conviene hacerla fuera de horas pico.
+
+**Límites.** Una sola corrida de la caída de región, porque la tarea es opcional. Con un nodo por
+región, "región" y "nodo" coinciden, y las regiones son lógicas, sin latencia inyectada.
