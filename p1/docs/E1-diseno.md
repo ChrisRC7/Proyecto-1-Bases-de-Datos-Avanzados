@@ -223,6 +223,117 @@ réplicas en total. Con un nodo por región eso no se puede cumplir, y el motor 
 repartidos en las tres regiones (el límite de §4). La tabla de E4 se sacó a una base sin regiones
 (`p1_control`) precisamente para medir la falla sobre un factor 3 que sí se cumple como se declara.
 
+---
+
+## 7. Réplica de Özsu frente a réplica Raft
+
+La palabra "réplica" aparece en §6 con dos sentidos. Mezclarlos lleva a respuestas contradictorias
+("¿`cliente_limon` está replicado?": sí y no). Se separan así:
+
+| | Réplica de Özsu (diseño distribuido) | Réplica Raft (CockroachDB) |
+| --- | --- | --- |
+| Unidad | El **fragmento** lógico (`cliente_limon`, `moneda`) | El **rango**: un tramo contiguo de claves (hasta 512 MiB) |
+| Quién decide | El diseñador, en la fase de **asignación** | El *allocator* del motor, dentro de la configuración de zona |
+| Para qué | **Acceso**: leer cerca y evitar joins remotos; también disponibilidad | **Durabilidad y disponibilidad**: sobrevivir a la caída de nodos |
+| Quién atiende lecturas | Cualquier copia (la del sitio que consulta) | Solo el **leaseholder**; las demás no sirven lecturas consistentes (salvo `GLOBAL` o *follower reads*) |
+| Propagación de escrituras | Se elige: *eager* o *lazy*; ROWA, copia primaria o votación | Fija: *eager* con líder único, confirmada por **mayoría** (2 de 3) |
+| Criterio | Costo: razón lecturas/escrituras × costo de comunicación | Tolerancia: RF = 2f + 1 réplicas para tolerar f caídas |
+
+En la clasificación de Özsu, Raft es un protocolo **eager de copia primaria** (el líder/leaseholder
+ordena todas las escrituras). Se distingue de ROWA en que confirma con la mayoría y no espera a
+todas las copias. Por eso tolera la caída de una réplica sin bloquear (E4).
+
+**Cómo se aplica a cada tabla del diseño:**
+
+| Tabla / fragmento | Réplica de Özsu (asignación) | Réplica Raft (observada) | Lectura |
+| --- | --- | --- | --- |
+| `moneda` | **Replicación completa**: una copia por región | 3 votantes, uno por región, `global_reads = true` | Cada nodo la sirve con **su** copia |
+| `cliente_r`, `cuenta_r`, `movimiento_r` | **Sin replicación**: un solo sitio, la región `r` | 3 votantes (uno por región); leaseholder en `r` | Solo el leaseholder en `r` |
+
+- **`moneda` es el único caso donde las dos coinciden.** `GLOBAL` implementa la replicación
+  completa de Özsu con réplicas Raft que sí atienden lecturas locales (lecturas no bloqueantes).
+  Por eso se pagan escrituras lentas (§6).
+- **Los fragmentos RBR no están replicados en el sentido de Özsu.** Cada uno está asignado a un
+  sitio, que es el único que lo atiende. Las copias Raft en las otras dos regiones no son
+  "réplicas para leer lejos": solo votan para que el rango tenga mayoría. La lectura remota de E3
+  lo prueba: desde `cr-sj`, leer una cuenta de `cr-limon` va hasta el leaseholder en `crdb-2`
+  aunque `crdb-1` tenga una copia Raft de ese mismo rango.
+- **La residencia se evalúa sobre la réplica Raft, no sobre la de Özsu.** Lógicamente, la PII de
+  `cliente_limon` vive en un solo sitio. Físicamente, sus bytes están en los tres nodos. Es el
+  límite declarado en §4 y la razón por la que E5 pide 3 nodos por región con `PLACEMENT
+  RESTRICTED` para cumplirla.
+
+---
+
+## 8. Asignación: fragmento → región → nodo
+
+La asignación **declarada** es la configuración de zona de cada partición
+(`lease_preferences = [[+region=r]]`, `e2-inspect.txt §5`). La **observada** sale de
+`p1/sql/asignacion.sql`: codifica cada fila a su clave física (`crdb_internal.encode_key`), busca el
+rango que la contiene y cruza ese rango con `SHOW RANGES … WITH DETAILS`. No se deduce del
+`start_key`, porque el motor fusiona rangos vacíos y un rango puede empezar antes del prefijo de
+su partición. Evidencia: `evidence/p1/e1-asignacion.txt` (la genera `p1/evidence.sh`).
+
+| Fragmento | Región hogar | Nodo (contenedor) | Rango | Filas | Leaseholder | Votantes |
+| --- | --- | --- | ---: | ---: | --- | --- |
+| `cliente_sj`, `cuenta_sj`, `movimiento_sj` | `cr-sj` | nodo 1 (`crdb-1`) | 124, 132, 136 | 1 473 / 2 205 / 43 996 | nodo 1 · `cr-sj` | {1, 2, 3} |
+| `cliente_limon`, `cuenta_limon`, `movimiento_limon` | `cr-limon` | nodo 3 (`crdb-2`) | 123, 131, 135 | 922 / 1 421 / 29 896 | nodo 3 · `cr-limon` | {1, 2, 3} |
+| `cliente_us`, `cuenta_us`, `movimiento_us` | `us-east` | nodo 2 (`crdb-3`) | 125, 133, 137 | 605 / 901 / 17 116 | nodo 2 · `us-east` | {1, 2, 3} |
+| `moneda` (completa) | todas | los 3 | 121 | 3 | nodo 1 (coordina escrituras) | {1, 2, 3} |
+
+La consulta de resumen (`asignacion.sql §3`) cuenta las filas RBR cuyo leaseholder está fuera de su
+región hogar: **0**. Cada fragmento ocupa exactamente un rango y lo atiende el nodo de su región.
+Los `node_id` son los de esta máquina: el clúster los asigna al unirse cada nodo, y en otra máquina
+`crdb-2` fue el nodo 2 (E3 §4). La asignación es **por región**; el número de nodo es incidental.
+
+```text
+          cr-sj · crdb-1 (nodo 1)       cr-limon · crdb-2 (nodo 3)      us-east · crdb-3 (nodo 2)
+        ┌────────────────────────┐    ┌────────────────────────┐    ┌────────────────────────┐
+ lease  │ ■ cliente_sj           │    │ ■ cliente_limon        │    │ ■ cliente_us           │
+ (sirve)│ ■ cuenta_sj            │    │ ■ cuenta_limon         │    │ ■ cuenta_us            │
+        │ ■ movimiento_sj        │    │ ■ movimiento_limon     │    │ ■ movimiento_us        │
+        ├────────────────────────┤    ├────────────────────────┤    ├────────────────────────┤
+ GLOBAL │ ◆ moneda (lee local)   │    │ ◆ moneda (lee local)   │    │ ◆ moneda (lee local)   │
+        ├────────────────────────┤    ├────────────────────────┤    ├────────────────────────┤
+ Raft   │ □ *_limon  □ *_us      │    │ □ *_sj  □ *_us         │    │ □ *_sj  □ *_limon      │
+ (vota) │                        │    │                        │    │                        │
+        └───────────▲────────────┘    └────────────────────────┘    └────────────────────────┘
+                    │ gateway de E3 y E4 (la sonda escribe por aquí)
+
+ ■ asignación de Özsu: el fragmento vive y se atiende en su región (leaseholder)
+ ◆ replicación completa de Özsu: cada región lee su propia copia
+ □ réplica Raft seguidora: solo vota para la mayoría 2/3; no atiende lecturas
+```
+
+```mermaid
+flowchart LR
+    subgraph SJ["cr-sj · crdb-1"]
+        csj["cliente_sj / cuenta_sj / movimiento_sj<br/>(leaseholder)"]
+        msj["moneda (copia GLOBAL)"]
+    end
+    subgraph LI["cr-limon · crdb-2"]
+        cli["cliente_limon / cuenta_limon / movimiento_limon<br/>(leaseholder)"]
+        mli["moneda (copia GLOBAL)"]
+    end
+    subgraph US["us-east · crdb-3"]
+        cus["cliente_us / cuenta_us / movimiento_us<br/>(leaseholder)"]
+        mus["moneda (copia GLOBAL)"]
+    end
+    csj -. "votante Raft" .-> LI
+    csj -. "votante Raft" .-> US
+    cli -. "votante Raft" .-> SJ
+    cli -. "votante Raft" .-> US
+    cus -. "votante Raft" .-> SJ
+    cus -. "votante Raft" .-> LI
+```
+
+Con la topología que RBR espera (≥ 3 nodos por región y `PLACEMENT RESTRICTED`), las flechas
+punteadas quedarían **dentro** de cada caja: los tres votantes de `cliente_limon` estarían en
+`cr-limon`. Así se cumpliría la residencia, pero una caída de toda la región dejaría sus filas sin
+servicio. E4 §"Caída de una región" mide el caso contrario, el de este montaje.
+
+---
+
 ## Anexo — Borrador de DDL (No es el schema.sql final, pero es basado en la propuesta presentada)
 
 ```sql

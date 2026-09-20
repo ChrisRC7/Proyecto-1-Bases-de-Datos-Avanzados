@@ -64,6 +64,7 @@ Genera, con marca de tiempo:
 | `evidence/p1/e2-inspect.txt` | `SHOW REGIONS`, localidad de cada tabla, `SHOW CREATE TABLE`, filas por fragmento, configuración de zona y `SHOW RANGES … WITH DETAILS` |
 | `evidence/p1/e2-check.txt` | Salida del verificador (10 comprobaciones) |
 | `evidence/p1/e1-verificacion.txt` | Completitud, reconstrucción, disyunción y derivada de la tabla de verificación del E1 (`sql/verificacion.sql`) |
+| `evidence/p1/e1-asignacion.txt` | Asignación observada del E1 §8: cada fragmento → rango → leaseholder y votantes (`sql/asignacion.sql`) |
 
 ## 3. Mediciones de latencia (E3)
 
@@ -177,7 +178,7 @@ p1/
 ├── docs/              E1-diseno, E3-mediciones, E4-falla, E5-comparacion
 ├── chaos/             falla de un nodo, sonda y RTO (E4)
 ├── baseline/          PostgreSQL de un nodo (E5)
-├── sql/               00_database, 01_schema, 02_e4_table, inspect, verificacion
+├── sql/               00_database, 01_schema, 02_e4_table, inspect, verificacion, asignacion
 ├── gen/seed.py        generador determinista
 └── bench/latency.py   mediciones de E3
 evidence/p1/           salidas generadas por los scripts

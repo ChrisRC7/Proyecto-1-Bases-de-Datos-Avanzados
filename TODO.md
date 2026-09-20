@@ -9,8 +9,8 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Decidir si hay fragmentación vertical de la PII
 - [x] Tabla de verificación: completitud, reconstrucción, disyunción (con consulta SQL de prueba)
 - [x] Tabla de réplica: qué tabla, factor y criterio de costo (`GLOBAL` vs `REGIONAL BY ROW`)
-- [ ] Distinguir réplica Raft de réplica de Özsu
-- [ ] Asignación fragmento → nodo/región + diagrama
+- [x] Distinguir réplica Raft de réplica de Özsu
+- [x] Asignación fragmento → nodo/región + diagrama
 - [x] Evaluar `PLACEMENT RESTRICTED` y declarar el límite de residencia
 
 ## 2. E2: Implementación (20 %)
