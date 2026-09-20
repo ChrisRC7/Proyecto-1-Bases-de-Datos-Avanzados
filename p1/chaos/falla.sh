@@ -60,7 +60,7 @@ IFS='|' read -r NODO STORE HOST_NODO < <(valor "
 # El contenedor se busca por el hostname que anuncia el nodo, no por su nombre.
 CONTENEDOR=$(for c in $(docker ps --format '{{.Names}}' --filter name=ti4601-crdb); do
                [[ $(docker inspect -f '{{.Config.Hostname}}' "$c") == "$HOST_NODO" ]] && echo "$c"
-             done)
+             done; true)   # `true`: el estado del for es el de su última comparación y set -e abortaría
 [[ -n $CONTENEDOR ]] || { echo "ERROR: ningún contenedor con hostname $HOST_NODO"; exit 1; }
 [[ $HOST_NODO != "$GATEWAY" ]] || { echo "ERROR: $REGION es la región del gateway de la sonda"; exit 1; }
 echo "region=$REGION → node_id=$NODO, store_id=$STORE, dirección=$HOST_NODO, contenedor=$CONTENEDOR"
