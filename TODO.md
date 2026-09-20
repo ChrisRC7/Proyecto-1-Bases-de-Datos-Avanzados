@@ -39,8 +39,8 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Script de falla: escritura sana → mover lease → `docker stop` con época → sonda → `docker start`
 - [x] Buscar nodo y `store_id` por localidad (no asumir que el número del contenedor es el del nodo)
 - [x] Calcular el RTO desde el CSV y mostrar la resta
-- [ ] Verificar y discutir el RPO (commits confirmados)
-- [ ] Repetir la falla 3 veces
+- [x] Verificar y discutir el RPO (commits confirmados)
+- [x] Repetir la falla 3 veces
 - [ ] (Opcional) Caída de una región y efecto en sus filas RBR
 
 ## 5. E5: Crítica (15 %)
