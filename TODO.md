@@ -50,8 +50,9 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Conclusión: justificado / no justificado / solo por residencia (≥ 1 página)
 
 ## 7. Informe PDF
-- [ ] Portada, requisitos, E1, E2, E3, E4, E5, apéndice con roles
-- [ ] Revisar que no aparezca la licencia
+- [x] Portada, requisitos, E1, E2, E3, E4, E5, apéndice con roles (`p1/informe.sh` → `entregas/p1/INFORME.pdf`)
+- [x] Revisar que no aparezca la licencia (lo comprueba `p1/informe.sh` y falla si aparece)
+- [ ] Completar el carné que falta y la tabla de roles (apéndice C de `p1/informe/99-apendice.md`)
 - [ ] Entregar en TEC Digital + `git tag entrega-p1`
 
 

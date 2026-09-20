@@ -199,7 +199,9 @@ p1/
 ├── baseline/          PostgreSQL de un nodo (E5)
 ├── sql/               00_database, 01_schema, 02_e4_table, inspect, verificacion, asignacion
 ├── gen/seed.py        generador determinista
-└── bench/latency.py   mediciones de E3
+├── bench/latency.py   mediciones de E3
+├── informe.sh         arma entregas/p1/INFORME.md y .pdf
+└── informe/           portada, apéndice y render a HTML del informe
 evidence/p1/           salidas generadas por los scripts
 ```
 
