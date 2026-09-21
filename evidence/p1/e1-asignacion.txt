@@ -1,0 +1,29 @@
+# Generado: 2026-09-20T17:51:01-06:00 · host: chris-HP-Pavilion-Notebook
+== 1. Nodos: node_id, contenedor y región
+ node_id | contenedor |        locality        | is_live 
+---------+------------+------------------------+---------
+       1 | crdb-1     | region=cr-sj,zone=a    | t
+       2 | crdb-3     | region=us-east,zone=a  | t
+       3 | crdb-2     | region=cr-limon,zone=a | t
+(3 rows)
+
+== 2. Fragmento → rango → leaseholder y votantes
+   tabla    |     fragmento     | range_id | filas | lh_nodo | lh_region | votantes | lh_en_hogar 
+------------+-------------------+----------+-------+---------+-----------+----------+-------------
+ cliente    | cr-limon          |      123 |   922 |       3 | cr-limon  | {1,3,2}  | t
+ cliente    | cr-sj             |      124 |  1473 |       1 | cr-sj     | {1,3,2}  | t
+ cliente    | us-east           |      125 |   605 |       2 | us-east   | {1,3,2}  | t
+ cuenta     | cr-limon          |      131 |  1421 |       3 | cr-limon  | {1,3,2}  | t
+ cuenta     | cr-sj             |      132 |  2205 |       1 | cr-sj     | {1,3,2}  | t
+ cuenta     | us-east           |      133 |   901 |       2 | us-east   | {1,3,2}  | t
+ moneda     | completa (GLOBAL) |      121 |     3 |       1 | cr-sj     | {1,3,2}  | 
+ movimiento | cr-limon          |      135 | 29896 |       3 | cr-limon  | {1,3,2}  | t
+ movimiento | cr-sj             |      136 | 43996 |       1 | cr-sj     | {1,3,2}  | t
+ movimiento | us-east           |      137 | 17116 |       2 | us-east   | {1,3,2}  | t
+(10 rows)
+
+== 3. Resumen: fragmentos cuyo leaseholder NO está en su región hogar (debe dar 0 filas RBR)
+ tabla | fragmento | filas_con_lease_fuera_de_hogar 
+-------+-----------+--------------------------------
+(0 rows)
+

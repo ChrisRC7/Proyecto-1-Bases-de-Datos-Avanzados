@@ -54,6 +54,55 @@ leaseholder por región para la PII (E1 §4, con su límite declarado), y `SERIA
 PostgreSQL de un nodo no tiene ninguna de las tres; con una réplica de lectura gana lecturas
 escalables y un respaldo, pero no confirmación con mayoría ni RPO 0 ante la pérdida del primario.
 
+## La alternativa del enunciado: 1 nodo primario + réplica de lectura
+
+El enunciado pide comparar contra "1 primario + réplica de lectura". Esa arquitectura **no se
+montó**: con replicación asíncrona la réplica no cambia la latencia de escritura del primario, que
+es lo que mide `latency_pg.py`, y las lecturas de este dominio ya se sirven en 0,17 ms. Lo que sigue
+es su descripción y qué pasaría con cada número medido.
+
+**Cómo sería.** PostgreSQL 16 con *streaming replication*: un primario que acepta lecturas y
+escrituras y una o más réplicas en modo *hot standby*, de solo lectura, que reciben el WAL y lo
+aplican. La aplicación necesita separar el tráfico: escrituras y lecturas que deban ver su propia
+escritura van al primario; las demás (O1, O2, O9) pueden ir a la réplica. En la práctica se pone un
+*pooler* (PgBouncer, Pgpool-II) o se resuelve en el cliente.
+
+| | Réplica asíncrona (`synchronous_commit = off/local`) | Réplica síncrona (`remote_apply` / `on`) |
+| --- | --- | --- |
+| Latencia de escritura | La del nodo único (1,4 ms medidos): el primario no espera a la réplica | El `COMMIT` espera a la réplica; con la réplica en la misma máquina, ~2–3 ms; entre regiones, el RTT |
+| RPO si se pierde el primario | **> 0**: se pierden las transacciones confirmadas que no alcanzaron a enviarse | 0 para lo confirmado, igual que el clúster |
+| RTO | Promoción **manual** o de una herramienta externa (Patroni, repmgr): minutos | Igual: la promoción sigue siendo externa |
+| Si cae la réplica | El primario sigue | Con `synchronous_standby_names` estricto, el primario **se bloquea** hasta que vuelva |
+
+**Qué compra.** (1) Lecturas escalables: los reportes (O9) y las consultas de saldo se reparten
+entre réplicas sin tocar el primario. (2) Una copia para recuperarse. (3) Casi toda la latencia del
+nodo único: las lecturas en la réplica valdrían ~0,17 ms, frente a 0,77–1,52 ms en el clúster.
+(4) Operación mucho más simple que el clúster: dos contenedores y un archivo de configuración,
+sin licencia, regiones ni `LOCALITY`.
+
+**Qué no compra, y por qué importa aquí.**
+
+1. **No cumple la residencia; la empeora.** La réplica recibe el WAL **completo**: toda la PII de
+   las tres regiones queda copiada en un segundo sitio. Si la réplica se pone en otra región para
+   servir lecturas cerca, los nombres y documentos de los clientes de `cr-sj` salen de su región.
+   No hay forma de replicar "solo las filas de esta región" con replicación física; habría que
+   pasar a replicación lógica por publicación filtrada, con un primario por región, que es
+   reconstruir a mano la fragmentación que `REGIONAL BY ROW` da declarada (E1 §3).
+2. **La conmutación no es automática.** En el clúster, la caída del leaseholder se resolvió sola en
+   4,6–6,5 s, tres veces de tres (E4). Promover una réplica exige decidir y ejecutar, o montar otra
+   pieza (Patroni + etcd) que vuelve a acercar la complejidad operativa a la del clúster.
+3. **Con réplica asíncrona, el RPO no es 0.** Es la diferencia de fondo: el clúster confirma con la
+   mayoría 2 de 3 *antes* de responder al cliente, y por eso ninguna escritura confirmada se perdió
+   en las tres corridas de E4. La réplica asíncrona responde antes de que el dato salga del
+   primario.
+4. **La escritura no escala ni se acerca al usuario.** Sigue habiendo un solo primario: todas las
+   escrituras de las tres regiones viajan hasta él.
+
+**Si el requisito fuera solo disponibilidad**, la mejor opción no es esta ni el clúster
+multi-región, sino **primario + réplica síncrona en la misma región con conmutación automática**:
+RPO 0, RTO de segundos a pocos minutos, latencias cercanas a las del nodo único y ninguna región que
+configurar. Es la alternativa que la conclusión pone en la balanza.
+
 ## Conclusión: justificado solo por residencia
 
 **Veredicto.** Para este dominio y este volumen, distribuir en tres regiones **no se justifica por
@@ -79,9 +128,9 @@ RBR declarada no coincide con la observada. Todas quedaron documentadas en E1 §
 **3. Disponibilidad: el clúster sí compra algo, pero no lo suficiente para justificarlo solo.** Al
 detener el nodo que tenía el lease, el clúster volvió a confirmar escrituras en **4,6 s** (cota
 superior de la sonda; el real está entre ~3,9 y 4,6 s), **sin intervención humana**. Siguió
-atendiendo con 2 de 3 nodos durante los 15 s de la falla (E4, corrida 1). En esa corrida, los folios
-confirmados siguen continuos: el último antes del stop fue el 29 y el primero después, el 30 (la
-verificación formal del RPO sigue pendiente en E4). La alternativa de **1 primario + réplica de
+atendiendo con 2 de 3 nodos durante los 15 s de la falla (E4, corrida 1). Lo repitió tres veces, con RTO de 4,6 / 6,5 / 5,2 s,
+y en las tres el RPO para escrituras confirmadas fue **0**: los folios confirmados no se repiten, no
+retroceden y el primero después del stop es el último antes + 1 (E4, `-rpo.txt`). La alternativa de **1 primario + réplica de
 lectura** no ofrece eso. Si la réplica es asíncrona, perder el primario puede perder transacciones
 ya confirmadas (RPO > 0). Además, promoverla es una decisión manual o de una herramienta externa,
 con un RTO de minutos. La réplica sí le da lecturas escalables y una copia para recuperarse. Aun

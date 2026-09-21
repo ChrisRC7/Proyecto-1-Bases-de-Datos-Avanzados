@@ -1,0 +1,16 @@
+# Generado: 2026-09-20T17:57:56-06:00 · host: chris-HP-Pavilion-Notebook · diagnóstico ad hoc (no lo genera region.sh)
+# Pregunta: en e4-region-cr-limon, lee-sj pasó de p50 1,1 ms a ~14 ms mientras crdb-2 estaba
+# detenido, pero lee-limon y lee-moneda no cambiaron. ¿Lo causa la caída del nodo por sí sola?
+# Método: 60 lecturas O1 por crdb-1, con 3 nodos y con crdb-2 detenido (tras 20 s de estabilización):
+#   (a) sin escritores; (b) con 1 transferencia concurrente sobre la misma fila; (c) otra fila.
+### 3 nodos
+sin escritores, fila sj[0]: p50=  1.02 max=   2.14
+con escritor sobre sj[0], leyendo sj[0]: p50=  1.05 max=  15.48
+con escritor sobre sj[0], leyendo sj[2] (sin escritor): p50=  1.01 max=   3.94
+### crdb-2 detenido
+sin escritores, fila sj[0]: p50=  1.01 max=   2.60
+con escritor sobre sj[0], leyendo sj[0]: p50=  1.05 max=  11.13
+con escritor sobre sj[0], leyendo sj[2] (sin escritor): p50=  0.99 max=   2.71
+# Conclusión: la caída del nodo sola no degrada las lecturas cr-sj (≈1 ms en los 6 casos).
+# La degradación de la corrida aparece solo con la caída + 6 casos concurrentes que comparten
+# filas (escribe-sj y escribe-cruza escriben ambos sj[1]); no se aisló más allá de eso.

@@ -64,6 +64,7 @@ Genera, con marca de tiempo:
 | `evidence/p1/e2-inspect.txt` | `SHOW REGIONS`, localidad de cada tabla, `SHOW CREATE TABLE`, filas por fragmento, configuración de zona y `SHOW RANGES … WITH DETAILS` |
 | `evidence/p1/e2-check.txt` | Salida del verificador (10 comprobaciones) |
 | `evidence/p1/e1-verificacion.txt` | Completitud, reconstrucción, disyunción y derivada de la tabla de verificación del E1 (`sql/verificacion.sql`) |
+| `evidence/p1/e1-asignacion.txt` | Asignación observada del E1 §8: cada fragmento → rango → leaseholder y votantes (`sql/asignacion.sql`) |
 
 ## 3. Mediciones de latencia (E3)
 
@@ -117,7 +118,26 @@ p1/chaos/falla.sh --corrida 2      # repeticiones, sin pisar la evidencia anteri
 
 Genera `evidence/p1/e4-corrida<N>-antes.txt`, `.csv`, `-sonda.txt`, `-stop.epoch`, `-stop.txt`,
 `-despues.txt` y `-rto.txt`. Si el script se interrumpe, vuelve a arrancar el nodo al salir. Opciones:
-`--region` (por defecto `cr-limon`), `--caido` (15 s) y `--corrida`. Resultados en
+`--region` (por defecto `cr-limon`), `--caido` (15 s) y `--corrida`.
+
+El RPO se calcula aparte, sobre la evidencia de la corrida:
+
+```bash
+docker compose --profile lab1 run --rm --no-deps app-crdb python3 p1/chaos/rpo.py \
+  evidence/p1/e4-corrida1.csv evidence/p1/e4-corrida1-stop.epoch evidence/p1/e4-corrida1-despues.txt \
+  | tee evidence/p1/e4-corrida1-rpo.txt
+```
+
+**Caída de una región completa (opcional):**
+
+```bash
+p1/chaos/region.sh                 # cae cr-limon durante 30 s
+```
+
+A diferencia de `falla.sh`, no mueve ningún lease: observa la colocación diseñada (E1 §8) y mide
+seis casos en paralelo (lectura y escritura de la región viva, de la caída, la que cruza y `moneda`
+GLOBAL), cada uno en su hilo y su conexión. Al final espera a que los leases vuelvan a su región y
+corre `check.py`. Genera `evidence/p1/e4-region-<region>-*`. Resultados en
 [`docs/E4-falla.md`](docs/E4-falla.md).
 
 ## 5. Comparación con PostgreSQL de un nodo (E5)
@@ -172,14 +192,16 @@ hogar de las filas, no una distancia.
 p1/
 ├── README.md          esta guía
 ├── setup.sh           configuración completa (E2)
-├── evidence.sh        evidencia de E1 (verificación) y E2
+├── evidence.sh        evidencia de E1 (verificación y asignación) y E2
 ├── check.py           verificador de solo lectura
 ├── docs/              E1-diseno, E3-mediciones, E4-falla, E5-comparacion
-├── chaos/             falla de un nodo, sonda y RTO (E4)
+├── chaos/             falla de un nodo (falla, sonda, rto, rpo) y caída de región (region) — E4
 ├── baseline/          PostgreSQL de un nodo (E5)
-├── sql/               00_database, 01_schema, 02_e4_table, inspect, verificacion
+├── sql/               00_database, 01_schema, 02_e4_table, inspect, verificacion, asignacion
 ├── gen/seed.py        generador determinista
-└── bench/latency.py   mediciones de E3
+├── bench/latency.py   mediciones de E3
+├── informe.sh         arma entregas/p1/INFORME.md y .pdf
+└── informe/           portada, apéndice y render a HTML del informe
 evidence/p1/           salidas generadas por los scripts
 ```
 

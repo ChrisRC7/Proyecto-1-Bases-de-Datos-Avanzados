@@ -13,3 +13,7 @@ venv/
 # Respaldos comprimidos (pueden contener .env / licencia)
 *.tar.gz
 *.zip
+
+# Intermedios del informe: se regeneran con p1/informe.sh; en el repo queda el PDF
+entregas/p1/INFORME.html
+entregas/p1/INFORME.md

@@ -1,0 +1,7 @@
+lee-sj         ok= 235 error=  4
+lee-limon      ok= 220 error=  5
+lee-moneda     ok= 285 error=  1
+escribe-sj     ok= 224 error=  4
+escribe-limon  ok= 205 error=  6
+escribe-cruza  ok= 202 error=  6
+CSV: evidence/p1/e4-region-cr-limon.csv

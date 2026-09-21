@@ -1,0 +1,18 @@
+CSV: evidence/p1/e4-region-cr-limon.csv (1397 intentos)
+docker stop terminó:  1789948436.151881 (2026-09-20T23:53:56.151+00:00)
+docker start terminó: 1789948467.959640 (2026-09-20T23:54:27.959+00:00) → región caída 31.8 s
+
+Columnas (segundos relativos al stop, salvo 'reintegración', relativa al start):
+  primer OK    fin del primer OK que empezó después del stop (como rto.py): cuándo el caso vuelve a responder
+  estable      fin del último intento con error o > 1 s antes del start: desde ahí el caso ya no se interrumpe
+  p50 estable  mediana de los OK entre 'estable' y el start: costo del caso con la región caída
+  reintegr.    fin del último intento con error o > 1 s después del start: cuánto dura volver a 3 nodos
+
+caso           p50 antes  err primer OK  estable p50 estable  err reintegr.  error típico
+                    (ms) caída       (s)      (s)        (ms) tras       (s)
+lee-sj              1.10    2     0.037   11.992       14.16    2    19.946  QueryCanceled
+lee-limon           1.61    3     5.919    9.965        1.56    2    19.945  QueryCanceled
+lee-moneda          1.07    0     0.039    0.000        0.95    1    20.358  QueryCanceled
+escribe-sj         23.10    2     0.071   12.161       23.16    2    19.627  QueryCanceled
+escribe-limon      26.75    4     6.330   11.781       24.14    2    19.946  QueryCanceled
+escribe-cruza      54.29    4     9.539   12.388       23.79    2    20.958  QueryCanceled

@@ -9,8 +9,8 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Decidir si hay fragmentación vertical de la PII
 - [x] Tabla de verificación: completitud, reconstrucción, disyunción (con consulta SQL de prueba)
 - [x] Tabla de réplica: qué tabla, factor y criterio de costo (`GLOBAL` vs `REGIONAL BY ROW`)
-- [ ] Distinguir réplica Raft de réplica de Özsu
-- [ ] Asignación fragmento → nodo/región + diagrama
+- [x] Distinguir réplica Raft de réplica de Özsu
+- [x] Asignación fragmento → nodo/región + diagrama
 - [x] Evaluar `PLACEMENT RESTRICTED` y declarar el límite de residencia
 
 ## 2. E2: Implementación (20 %)
@@ -41,17 +41,18 @@ Dominio: **Opción A, Banca / billetera regional** (`cr-sj`, `cr-limon`, `us-eas
 - [x] Calcular el RTO desde el CSV y mostrar la resta
 - [x] Verificar y discutir el RPO (commits confirmados)
 - [x] Repetir la falla 3 veces
-- [ ] (Opcional) Caída de una región y efecto en sus filas RBR
+- [x] (Opcional) Caída de una región y efecto en sus filas RBR
 
 ## 5. E5: Crítica (15 %)
 - [x] Correr el mismo benchmark contra Postgres de un nodo
 - [x] Comparar latencia, complejidad operativa y costo (`docker stats`)
-- [ ] Describir la alternativa con réplica de lectura
+- [x] Describir la alternativa con réplica de lectura
 - [x] Conclusión: justificado / no justificado / solo por residencia (≥ 1 página)
 
 ## 7. Informe PDF
-- [ ] Portada, requisitos, E1, E2, E3, E4, E5, apéndice con roles
-- [ ] Revisar que no aparezca la licencia
+- [x] Portada, requisitos, E1, E2, E3, E4, E5, apéndice con roles (`p1/informe.sh` → `entregas/p1/INFORME.pdf`)
+- [x] Revisar que no aparezca la licencia (lo comprueba `p1/informe.sh` y falla si aparece)
+- [ ] Completar el carné que falta y la tabla de roles (apéndice C de `p1/informe/99-apendice.md`)
 - [ ] Entregar en TEC Digital + `git tag entrega-p1`
 
 
